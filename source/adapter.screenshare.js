@@ -57,7 +57,7 @@ AdapterJS.defineMediaSourcePolyfill = function () {
               reject(new Error('Your version of the WebRTC plugin does not support screensharing'));
               return;
             }
-            baseGetUserMedia(updatedConstraints).then(resolve)['catch'](reject);
+            baseGetUserMedia(updatedConstraints).then(resolve).catch(reject);
           });
         });
       }

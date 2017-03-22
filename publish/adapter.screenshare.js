@@ -1,4 +1,4 @@
-/*! adapterjs - v0.14.2-252494e - 2017-03-22 */
+/*! adapterjs - v0.14.2-3930d08 - 2017-03-23 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -12,7 +12,7 @@ AdapterJS.options = AdapterJS.options || {};
 AdapterJS.options.hidePluginInstallPrompt = true;
 
 // AdapterJS version
-AdapterJS.VERSION = '0.14.2-252494e';
+AdapterJS.VERSION = '0.14.2-3930d08';
 
 // This function will be called when the WebRTC API is ready to be used
 // Whether it is the native implementation (Chrome, Firefox, Opera) or
@@ -1223,7 +1223,6 @@ module.exports = SDPUtils;
       edgeShim.shimGetUserMedia();
       utils.shimCreateObjectURL();
       edgeShim.shimPeerConnection();
-      edgeShim.shimReplaceTrack();
       break;
     case 'safari':
       if (!safariShim) {
@@ -1934,7 +1933,7 @@ var edgeShim = {
       if (config && config.iceServers) {
         this.iceOptions.iceServers = filterIceServers(config.iceServers);
       }
-      this._config = config || {};
+      this._config = config;
 
       // per-track iceGathers, iceTransports, dtlsTransports, rtpSenders, ...
       // everything that is needed to describe a SDP m-line.
@@ -2218,29 +2217,6 @@ var edgeShim = {
           };
         };
 
-    // Destroy ICE gatherer, ICE transport and DTLS transport.
-    // Without triggering the callbacks.
-    window.RTCPeerConnection.prototype._disposeIceAndDtlsTransports =
-        function(sdpMLineIndex) {
-          var iceGatherer = this.transceivers[sdpMLineIndex].iceGatherer;
-          if (iceGatherer) {
-            delete iceGatherer.onlocalcandidate;
-            delete this.transceivers[sdpMLineIndex].iceGatherer;
-          }
-          var iceTransport = this.transceivers[sdpMLineIndex].iceTransport;
-          if (iceTransport) {
-            delete iceTransport.onicestatechange;
-            delete this.transceivers[sdpMLineIndex].iceTransport;
-          }
-          var dtlsTransport = this.transceivers[sdpMLineIndex].dtlsTransport;
-          if (dtlsTransport) {
-            delete dtlsTransport.ondtlssttatechange;
-            delete dtlsTransport.onerror;
-            delete this.transceivers[sdpMLineIndex].dtlsTransport;
-          }
-        };
-
-
     // Start the RTP Sender and Receiver for a transceiver.
     window.RTCPeerConnection.prototype._transceive = function(transceiver,
         send, recv) {
@@ -2396,7 +2372,7 @@ var edgeShim = {
           var sessionpart = sections.shift();
           var isIceLite = SDPUtils.matchPrefix(sessionpart,
               'a=ice-lite').length > 0;
-          var usingBundle = SDPUtils.matchPrefix(sessionpart,
+          this.usingBundle = SDPUtils.matchPrefix(sessionpart,
               'a=group:BUNDLE ').length > 0;
           sections.forEach(function(mediaSection, sdpMLineIndex) {
             var lines = SDPUtils.splitLines(mediaSection);
@@ -2470,13 +2446,13 @@ var edgeShim = {
                   return cand.component === '1';
                 });
             if (description.type === 'offer' && !rejected) {
-              var transports = usingBundle && sdpMLineIndex > 0 ? {
+              var transports = self.usingBundle && sdpMLineIndex > 0 ? {
                 iceGatherer: self.transceivers[0].iceGatherer,
                 iceTransport: self.transceivers[0].iceTransport,
                 dtlsTransport: self.transceivers[0].dtlsTransport
               } : self._createIceAndDtlsTransports(mid, sdpMLineIndex);
 
-              if (isComplete && (!usingBundle || sdpMLineIndex === 0)) {
+              if (isComplete && (!self.usingBundle || sdpMLineIndex === 0)) {
                 transports.iceTransport.setRemoteCandidates(cands);
               }
 
@@ -2547,15 +2523,6 @@ var edgeShim = {
                   false,
                   direction === 'sendrecv' || direction === 'sendonly');
             } else if (description.type === 'answer' && !rejected) {
-              if (usingBundle && sdpMLineIndex > 0) {
-                self._disposeIceAndDtlsTransports(sdpMLineIndex);
-                self.transceivers[sdpMLineIndex].iceGatherer =
-                    self.transceivers[0].iceGatherer;
-                self.transceivers[sdpMLineIndex].iceTransport =
-                    self.transceivers[0].iceTransport;
-                self.transceivers[sdpMLineIndex].dtlsTransport =
-                    self.transceivers[0].dtlsTransport;
-              }
               transceiver = self.transceivers[sdpMLineIndex];
               iceGatherer = transceiver.iceGatherer;
               iceTransport = transceiver.iceTransport;
@@ -2574,7 +2541,7 @@ var edgeShim = {
               if ((isIceLite || isComplete) && cands.length) {
                 iceTransport.setRemoteCandidates(cands);
               }
-              if (!usingBundle || sdpMLineIndex === 0) {
+              if (!self.usingBundle || sdpMLineIndex === 0) {
                 iceTransport.start(iceGatherer, remoteIceParameters,
                     'controlling');
                 dtlsTransport.start(remoteDtlsParameters);
@@ -2595,7 +2562,6 @@ var edgeShim = {
               }
             }
           });
-          this.usingBundle = usingBundle;
 
           this.remoteDescription = {
             type: description.type,
@@ -2873,14 +2839,11 @@ var edgeShim = {
           recvEncodingParameters: null
         };
       });
-
-      // always offer BUNDLE and dispose on return if not supported.
-      if (this._config.bundlePolicy !== 'max-compat') {
+      if (this.usingBundle) {
         sdp += 'a=group:BUNDLE ' + transceivers.map(function(t) {
           return t.mid;
         }).join(' ') + '\r\n';
       }
-
       tracks.forEach(function(mline, sdpMLineIndex) {
         var transceiver = transceivers[sdpMLineIndex];
         sdp += SDPUtils.writeMediaSection(transceiver,
@@ -2918,13 +2881,6 @@ var edgeShim = {
         var commonCapabilities = self._getCommonCapabilities(
             transceiver.localCapabilities,
             transceiver.remoteCapabilities);
-
-        var hasRtx = commonCapabilities.codecs.filter(function(c) {
-          return c.name.toLowerCase() === 'rtx';
-        }).length;
-        if (!hasRtx && transceiver.sendEncodingParameters[0].rtx) {
-          delete transceiver.sendEncodingParameters[0].rtx;
-        }
 
         sdp += SDPUtils.writeMediaSection(transceiver, commonCapabilities,
             'answer', self.localStreams[0]);
@@ -3023,12 +2979,6 @@ var edgeShim = {
         });
       });
     };
-  },
-  shimReplaceTrack: function() {
-    // ORTC has replaceTrack -- https://github.com/w3c/ortc/issues/614
-    if (window.RTCRtpSender && !('replaceTrack' in RTCRtpSender.prototype)) {
-      RTCRtpSender.prototype.replaceTrack = RTCRtpSender.prototype.setTrack;
-    }
   }
 };
 
@@ -4423,7 +4373,7 @@ AdapterJS.defineMediaSourcePolyfill = function () {
               reject(new Error('Your version of the WebRTC plugin does not support screensharing'));
               return;
             }
-            baseGetUserMedia(updatedConstraints).then(resolve)['catch'](reject);
+            baseGetUserMedia(updatedConstraints).then(resolve).catch(reject);
           });
         });
       }
