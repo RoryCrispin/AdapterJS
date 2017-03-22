@@ -4170,29 +4170,23 @@ module.exports = {
       return cc;
     };
 
-    AdapterJS.getUserMedia = function (constraints, successCallback, failureCallback) {
+    AdapterJS.getUserMedia = function (constraints) {
       var cc = {};
       cc.audio = constraints.audio ?
         constraintsToPlugin(constraints.audio) : false;
       cc.video = constraints.video ?
         constraintsToPlugin(constraints.video) : false;
 
-      AdapterJS.WebRTCPlugin.callWhenPluginReady(function() {
-        AdapterJS.WebRTCPlugin.plugin.
-          getUserMedia(cc, successCallback, failureCallback);
+      return new Promise(function(resolve, reject) {
+        AdapterJS.WebRTCPlugin.callWhenPluginReady(function() {
+          AdapterJS.WebRTCPlugin.plugin.
+            getUserMedia(cc, resolve, reject);
+        });
       });
     };
-
-    var requestUserMedia = function (constraints) {
-      return new Promise(function (resolve, reject) {
-        AdapterJS.getUserMedia(constraints, resolve, reject);
-      });
-    };
-
     // Always assume availability of Promise (by shim or native)
-
     navigator.mediaDevices = {
-      getUserMedia: requestUserMedia,
+      getUserMedia: AdapterJS.getUserMedia,
       enumerateDevices: function() {
         return new Promise(function(resolve) {
           var kinds = {audio: 'audioinput', video: 'videoinput'};
