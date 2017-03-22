@@ -9,8 +9,16 @@
     },
     "repository": {
         "type": "git",
-        "url": "git@github.com:Temasys/AdapterJS.git"
+        "url": "git@github.com:StarLeafRob/AdapterJS.git"
     },
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "tests",
+        "third_party",
+        "doc"
+    ],
     "licenses": [{
         "type": "Apache",
         "url": "http://www.apache.org/licenses/LICENSE-2.0"
