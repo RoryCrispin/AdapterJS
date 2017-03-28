@@ -1,4 +1,4 @@
-/*! adapterjs - v0.14.2-3930d08 - 2017-03-23 */
+/*! adapterjs - v0.14.2-3930d08 - 2017-03-28 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -529,6 +529,8 @@ RTCIceCandidate = (typeof RTCIceCandidate === 'function') ?
 
 AdapterJS.attachMediaStream = null;
 AdapterJS.reattachMediaStream = null;
+
+navigator.mediaDevices = navigator.mediaDevices || {};
 
 
 // Detected browser agent name. Types are:

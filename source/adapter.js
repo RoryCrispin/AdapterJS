@@ -500,6 +500,8 @@ RTCIceCandidate = (typeof RTCIceCandidate === 'function') ?
 AdapterJS.attachMediaStream = null;
 AdapterJS.reattachMediaStream = null;
 
+navigator.mediaDevices = navigator.mediaDevices || {};
+
 
 // Detected browser agent name. Types are:
 // - 'firefox': Firefox browser.
