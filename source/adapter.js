@@ -5,9 +5,15 @@ AdapterJS.options = AdapterJS.options || {};
 
 // uncomment to get virtual webcams
 // AdapterJS.options.getAllCams = true;
+AdapterJS.options.getAllCams = !!AdapterJS.options.getAllCams;
 
 // uncomment to prevent the install prompt when the plugin in not yet installed
 AdapterJS.options.hidePluginInstallPrompt = true;
+AdapterJS.options.hidePluginInstallPrompt = !!AdapterJS.options.hidePluginInstallPrompt;
+
+// uncomment to force the use of the plugin on Safari
+// AdapterJS.options.forceSafariPlugin = true;
+AdapterJS.options.forceSafariPlugin = !!AdapterJS.options.forceSafariPlugin;
 
 // AdapterJS version
 AdapterJS.VERSION = '@@version';
@@ -43,8 +49,8 @@ AdapterJS.webRTCReady = function (baseCallback) {
     // When you set a setTimeout(definePolyfill, 0), it overrides the WebRTC function
     // This is be more than 0s
     if (typeof window.require === 'function' &&
-      typeof AdapterJS.defineMediaSourcePolyfill === 'function') {
-      AdapterJS.defineMediaSourcePolyfill();
+      typeof AdapterJS._defineMediaSourcePolyfill === 'function') {
+      AdapterJS._defineMediaSourcePolyfill();
     }
 
     // All WebRTC interfaces are ready, just call the callback
@@ -154,18 +160,12 @@ AdapterJS.WebRTCPlugin.callWhenPluginReady = null;
 // This function is the only private function that is not encapsulated to
 // allow the plugin method to be called.
 __TemWebRTCReady0 = function () {
-  if (document.readyState === 'complete') {
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
     AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.READY;
     AdapterJS.maybeThroughWebRTCReady();
   } else {
-    var timer = setInterval(function () {
-      if (document.readyState === 'complete') {
-        // TODO: update comments, we wait for the document to be ready
-        clearInterval(timer);
-        AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.READY;
-        AdapterJS.maybeThroughWebRTCReady();
-      }
-    }, 100);
+    // Try again in 100ms
+    setTimeout(__TemWebRTCReady0, 100);
   }
 };
 
@@ -333,24 +333,29 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     webrtcDetectedDCSupport = webrtcDetectedVersion > 30 ? 'SCTP' : 'RTP'; // Chrome 31+ supports SCTP without flags
 
   // Detect Safari
-  } else if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+  } else if (/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || safari.pushNotification) || navigator.userAgent.match(/AppleWebKit\/(\d+)\./) || navigator.userAgent.match(/Version\/(\d+).(\d+)/)) {
     hasMatch = navigator.userAgent.match(/version\/(\d+)/i) || [];
+    AppleWebKitBuild = navigator.userAgent.match(/AppleWebKit\/(\d+)/i) || [];
 
-    var isMobile = navigator.userAgent.match(/(iPhone|iPad)/gi) || [];
-
+    var isMobile      = navigator.userAgent.match(/(iPhone|iPad)/gi);
+    var hasNativeImpl = AppleWebKitBuild.length >= 1 && AppleWebKitBuild[1] >= 604;
     webrtcDetectedBrowser   = 'safari';
     webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
     webrtcMinimumVersion    = 7;
-    webrtcDetectedType      = isMobile.length === 0 ? 'plugin' : null;
-    webrtcDetectedDCSupport = isMobile.length === 0 ? 'SCTP' : null;
-
+    if (isMobile) {
+      webrtcDetectedType    = hasNativeImpl ? 'AppleWebKit' : null;
+    } else { // desktop
+      webrtcDetectedType    = hasNativeImpl && !AdapterJS.options.forceSafariPlugin ? 'AppleWebKit' : 'plugin';
+    }
+    webrtcDetectedDCSupport = 'SCTP';
   }
 
-  window.webrtcDetectedBrowser   = webrtcDetectedBrowser;
-  window.webrtcDetectedVersion   = webrtcDetectedVersion;
-  window.webrtcMinimumVersion    = webrtcMinimumVersion;
-  window.webrtcDetectedType      = webrtcDetectedType; // Scope it to window for better consistency
-  window.webrtcDetectedDCSupport = webrtcDetectedDCSupport; // Scope it to window for better consistency
+  // Scope it to AdapterJS and window for better consistency
+  AdapterJS.webrtcDetectedBrowser   = window.webrtcDetectedBrowser   = webrtcDetectedBrowser;
+  AdapterJS.webrtcDetectedVersion   = window.webrtcDetectedVersion   = webrtcDetectedVersion;
+  AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion    = webrtcMinimumVersion;
+  AdapterJS.webrtcDetectedType      = window.webrtcDetectedType      = webrtcDetectedType;
+  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport;
 };
 
 AdapterJS.addEvent = function(elem, evnt, func) {
@@ -380,9 +385,9 @@ checkMediaDataChannelSettings =
     return;
   }
   var beOfferer = true;
-  var isLocalFirefox = webrtcDetectedBrowser === 'firefox';
+  var isLocalFirefox = AdapterJS.webrtcDetectedBrowser === 'firefox';
   // Nightly version does not require MozDontOfferDataChannel for interop
-  var isLocalFirefoxInterop = webrtcDetectedType === 'moz' && webrtcDetectedVersion > 30;
+  var isLocalFirefoxInterop = AdapterJS.webrtcDetectedType === 'moz' && AdapterJS.webrtcDetectedVersion > 30;
   var isPeerFirefox = peerBrowserAgent === 'firefox';
   var isPeerFirefoxInterop = peerBrowserAgent === 'firefox' &&
     ((peerBrowserVersion) ? (peerBrowserVersion > 30) : false);
@@ -485,6 +490,9 @@ createIceServer = null;
 createIceServers = null;
 //------------------------------------------------------------
 
+//Creates MediaStream object.
+MediaStream = (typeof MediaStream === 'function') ? MediaStream : null;
+
 //The RTCPeerConnection object.
 RTCPeerConnection = (typeof RTCPeerConnection === 'function') ?
   RTCPeerConnection : null;
@@ -517,25 +525,30 @@ webrtcDetectedVersion = null;
 // The minimum browser version still supported by AJS.
 webrtcMinimumVersion  = null;
 
+// The type of DC supported by the browser
+webrtcDetectedDCSupport = null;
+
+// The requestUserMedia used by plugin gUM
+requestUserMedia = null;
+
 // Check for browser types and react accordingly
-if ( (navigator.mozGetUserMedia ||
-      navigator.webkitGetUserMedia ||
-      (navigator.mediaDevices &&
-       navigator.userAgent.match(/Edge\/(\d+).(\d+)$/)))
-    && !((navigator.userAgent.match(/android/ig) || []).length === 0 &&
-        (navigator.userAgent.match(/chrome/ig) || []).length === 0 && navigator.userAgent.indexOf('Safari/') > 0)) {
+AdapterJS.parseWebrtcDetectedBrowser();
+if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType) > -1) {
 
   ///////////////////////////////////////////////////////////////////
   // INJECTION OF GOOGLE'S ADAPTER.JS CONTENT
 
+  // Store the original native RTCPC in msRTCPeerConnection object
+  if (navigator.userAgent.match(/Edge\/(\d+).(\d+)$/) && window.RTCPeerConnection) {
+    window.msRTCPeerConnection = window.RTCPeerConnection;
+  }
+
 /* jshint ignore:start */
-@Goo@include('third_party/adapter/out/adapter.js', {})
+@Goo@include('node_modules/webrtc-adapter/out/adapter.js', {})
 /* jshint ignore:end */
 
   // END OF INJECTION OF GOOGLE'S ADAPTER.JS CONTENT
   ///////////////////////////////////////////////////////////////////
-
-  AdapterJS.parseWebrtcDetectedBrowser();
 
   ///////////////////////////////////////////////////////////////////
   // EXTENSION FOR CHROME, FIREFOX AND EDGE
@@ -583,7 +596,7 @@ if ( (navigator.mozGetUserMedia ||
       if (urlParts[0].indexOf('stun') === 0) {
         iceServer = { urls : [url] };
       } else if (urlParts[0].indexOf('turn') === 0) {
-        if (webrtcDetectedVersion < 27) {
+        if (AdapterJS.webrtcDetectedVersion < 27) {
           var turnUrlParts = url.split('?');
           if (turnUrlParts.length === 1 ||
             turnUrlParts[1].indexOf('transport=udp') === 0) {
@@ -619,7 +632,7 @@ if ( (navigator.mozGetUserMedia ||
   } else if ( navigator.webkitGetUserMedia ) {
     // Attach a media stream to an element.
     AdapterJS.attachMediaStream = function(element, stream) {
-      if (webrtcDetectedVersion >= 43) {
+      if (AdapterJS.webrtcDetectedVersion >= 43) {
         element.srcObject = stream;
       } else if (typeof element.src !== 'undefined') {
         element.src = URL.createObjectURL(stream);
@@ -631,7 +644,7 @@ if ( (navigator.mozGetUserMedia ||
     };
 
     AdapterJS.reattachMediaStream = function(to, from) {
-      if (webrtcDetectedVersion >= 43) {
+      if (AdapterJS.webrtcDetectedVersion >= 43) {
         to.srcObject = from.srcObject;
       } else {
         to.src = from.src;
@@ -660,7 +673,7 @@ if ( (navigator.mozGetUserMedia ||
       console.warn('createIceServers is deprecated. It should be replaced with an application level implementation.');
 
       var iceServers = [];
-      if (webrtcDetectedVersion >= 34) {
+      if (AdapterJS.webrtcDetectedVersion >= 34) {
         iceServers = {
           'urls' : urls,
           'credential' : password,
@@ -676,6 +689,22 @@ if ( (navigator.mozGetUserMedia ||
       }
       return iceServers;
     };
+  } else if (AdapterJS.webrtcDetectedType === 'AppleWebKit') {
+    attachMediaStream = function(element, stream) {
+      element.srcObject = stream;
+      return element;
+    };
+    reattachMediaStream = function(to, from) {
+      to.srcObject = from.srcObject;
+      return to;
+    };
+
+    // Polyfill getUserMedia()
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.getUserMedia = getUserMedia = function (constraints, successCb, errorCb) {
+        navigator.mediaDevices.getUserMedia(constraints).then(successCb).catch(errorCb);
+      };
+    }
   } else if (navigator.mediaDevices && navigator.userAgent.match(/Edge\/(\d+).(\d+)$/)) {
     // Attach a media stream to an element.
     AdapterJS.attachMediaStream = function(element, stream) {
@@ -693,9 +722,9 @@ if ( (navigator.mozGetUserMedia ||
   // to support the plugin's logic
   var attachMediaStream_base = AdapterJS.attachMediaStream;
 
-  if (webrtcDetectedBrowser === 'opera') {
+  if (AdapterJS.webrtcDetectedBrowser === 'opera') {
     attachMediaStream_base = function (element, stream) {
-      if (webrtcDetectedVersion > 38) {
+      if (AdapterJS.webrtcDetectedVersion > 38) {
         element.srcObject = stream;
       } else if (typeof element.src !== 'undefined') {
         element.src = URL.createObjectURL(stream);
@@ -705,8 +734,8 @@ if ( (navigator.mozGetUserMedia ||
   }
 
   AdapterJS.attachMediaStream = function (element, stream) {
-    if ((webrtcDetectedBrowser === 'chrome' ||
-         webrtcDetectedBrowser === 'opera') &&
+    if ((AdapterJS.webrtcDetectedBrowser === 'chrome' ||
+         AdapterJS.webrtcDetectedBrowser === 'opera') &&
         !stream) {
       // Chrome does not support "src = null"
       element.src = '';
@@ -738,6 +767,7 @@ if ( (navigator.mozGetUserMedia ||
   //
   // Shims the follwing:
   // -- getUserMedia
+  // -- MediaStream
   // -- MediaStreamTrack
   // -- MediaStreamTrack.getSources
   // -- RTCPeerConnection
@@ -773,8 +803,6 @@ if ( (navigator.mozGetUserMedia ||
     console.groupEnd = function (arg) {};
     /* jshint +W020 */
   }
-  AdapterJS.parseWebrtcDetectedBrowser();
-  isIE = webrtcDetectedBrowser === 'IE';
 
   /* jshint -W035 */
   AdapterJS.WebRTCPlugin.WaitForPluginReady = function() {
@@ -808,7 +836,7 @@ if ( (navigator.mozGetUserMedia ||
 
   AdapterJS.WebRTCPlugin.injectPlugin = function () {
     // only inject once the page is ready
-    if (document.readyState !== 'complete') {
+    if (document.readyState !== 'interactive' && document.readyState !== 'complete') {
       return;
     }
 
@@ -819,7 +847,7 @@ if ( (navigator.mozGetUserMedia ||
 
     AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.INJECTING;
 
-    if (webrtcDetectedBrowser === 'IE' && webrtcDetectedVersion <= 10) {
+    if (AdapterJS.webrtcDetectedBrowser === 'IE' && AdapterJS.webrtcDetectedVersion <= 10) {
       var frag = document.createDocumentFragment();
       AdapterJS.WebRTCPlugin.plugin = document.createElement('div');
       AdapterJS.WebRTCPlugin.plugin.innerHTML = '<object id="' +
@@ -849,7 +877,7 @@ if ( (navigator.mozGetUserMedia ||
       AdapterJS.WebRTCPlugin.plugin.id =
         AdapterJS.WebRTCPlugin.pluginInfo.pluginId;
       // IE will only start the plugin if it's ACTUALLY visible
-      if (isIE) {
+      if (AdapterJS.webrtcDetectedBrowser === 'IE') {
         AdapterJS.WebRTCPlugin.plugin.width = '1px';
         AdapterJS.WebRTCPlugin.plugin.height = '1px';
       } else { // The size of the plugin on Safari should be 0x0px
@@ -875,7 +903,7 @@ if ( (navigator.mozGetUserMedia ||
 
   AdapterJS.WebRTCPlugin.isPluginInstalled =
     function (comName, plugName, plugType, installedCb, notInstalledCb) {
-    if (!isIE) {
+    if (AdapterJS.webrtcDetectedBrowser !== 'IE') {
       var pluginArray = navigator.mimeTypes;
       for (var i = 0; i < pluginArray.length; i++) {
         if (pluginArray[i].type.indexOf(plugType) >= 0) {
@@ -908,6 +936,9 @@ if ( (navigator.mozGetUserMedia ||
       return variable !== null && variable !== undefined;
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// CreateIceServer
+    ////////////////////////////////////////////////////////////////////////////
     createIceServer = function (url, username, password) {
       var iceServer = null;
       var urlParts = url.split(':');
@@ -927,6 +958,9 @@ if ( (navigator.mozGetUserMedia ||
       return iceServer;
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// CreateIceServers
+    ////////////////////////////////////////////////////////////////////////////
     createIceServers = function (urls, username, password) {
       var iceServers = [];
       for (var i = 0; i < urls.length; ++i) {
@@ -935,12 +969,26 @@ if ( (navigator.mozGetUserMedia ||
       return iceServers;
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// RTCSessionDescription
+    ////////////////////////////////////////////////////////////////////////////
     RTCSessionDescription = function (info) {
       AdapterJS.WebRTCPlugin.WaitForPluginReady();
       return AdapterJS.WebRTCPlugin.plugin.
         ConstructSessionDescription(info.type, info.sdp);
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// MediaStream
+    ////////////////////////////////////////////////////////////////////////////
+    MediaStream = function (mediaStreamOrTracks) {
+      AdapterJS.WebRTCPlugin.WaitForPluginReady();
+      return AdapterJS.WebRTCPlugin.plugin.MediaStream(mediaStreamOrTracks);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// RTCPeerConnection
+    ////////////////////////////////////////////////////////////////////////////
     RTCPeerConnection = function (servers, constraints) {
       // Validate server argumenr
       if (!(servers === undefined ||
@@ -1002,6 +1050,9 @@ if ( (navigator.mozGetUserMedia ||
       }
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// MediaStreamTrack
+    ////////////////////////////////////////////////////////////////////////////
     MediaStreamTrack = function(){};
     MediaStreamTrack.getSources = function (callback) {
       AdapterJS.WebRTCPlugin.callWhenPluginReady(function() {
@@ -1017,7 +1068,11 @@ if ( (navigator.mozGetUserMedia ||
       }
       var cc = {};
       Object.keys(c).forEach(function(key) {
-        if (key === 'require' || key === 'advanced' || key === 'mediaSource') {
+        if (key === 'require' || key === 'advanced') {
+          return;
+        }
+        if (typeof c[key] === 'string') {
+          cc[key] = c[key];
           return;
         }
         var r = (typeof c[key] === 'object') ? c[key] : {ideal: c[key]};
@@ -1030,6 +1085,15 @@ if ( (navigator.mozGetUserMedia ||
           }
           return (name === 'deviceId') ? 'sourceId' : name;
         };
+
+        // HACK : Specially handling: if deviceId is an object with exact property,
+        //          change it such that deviceId value is not in exact property
+        // Reason : AJS-286 (deviceId in WebRTC samples not in the format specified as specifications)
+        if ( oldname('', key) === 'sourceId' && r.exact !== undefined ) {
+          r.ideal = r.exact;
+          r.exact = undefined;
+        }
+
         if (r.ideal !== undefined) {
           cc.optional = cc.optional || [];
           var oc = {};
@@ -1215,6 +1279,9 @@ if ( (navigator.mozGetUserMedia ||
       }
     };
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// RTCIceCandidate
+    ////////////////////////////////////////////////////////////////////////////
     RTCIceCandidate = function (candidate) {
       if (!candidate.sdpMid) {
         candidate.sdpMid = '';

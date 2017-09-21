@@ -4,10 +4,10 @@
 
 Find the most recent version hosted on our CDN.
 
-- Minified version: `//cdn.temasys.io/adapterjs/0.14.x/adapter.min.js`
-- Debug version `//cdn.temasys.io/adapterjs/0.14.x/adapter.debug.js`
-- Minified version (with screensharing changes): `//cdn.temasys.io/adapterjs/0.14.x/adapter.screenshare.min.js`
-- Debug version (with screensharing changes)`//cdn.temasys.io/adapterjs/0.14.x/adapter.screenshare.js`
+- Minified version: `//cdn.temasys.io/adapterjs/0.15.x/adapter.min.js`
+- Debug version `//cdn.temasys.io/adapterjs/0.15.x/adapter.debug.js`
+- Minified version (with screensharing changes): `//cdn.temasys.io/adapterjs/0.15.x/adapter.screenshare.min.js`
+- Debug version (with screensharing changes)`//cdn.temasys.io/adapterjs/0.15.x/adapter.screenshare.js`
 
 Part of the [Skylink WebRTC](http://skylink.io/web) toolkit.
 
@@ -21,14 +21,19 @@ AdapterJS provides polyfills and cross-browser helpers for WebRTC. It wraps arou
 | Browsers          | Min. Version | OS Platform              | Screensharing             | 
 | ----------------- | ------------ | ------------------------ | ------------------------- | 
 | Chrome \ Chromium | `38`         | MacOS / Win / Ubuntu / Android | Yes (w [Extension](https://chrome.google.com/webstore/detail/skylink-webrtc-tools/ljckddiekopnnjoeaiofddfhgnbdoafc))         |
-| Firefox           | `33`         | MacOS / Win / Ubuntu / Android | Yes (w [Extension](https://addons.mozilla.org/en-US/firefox/addon/skylink-webrtc-tools/))         |
-| Opera             | `26`         | MacOS / Win / Ubuntu / Android |  -                        | 
+| Firefox           | `33`         | MacOS / Win / Ubuntu / Android | Yes (w [Extension for `51` and below](https://addons.mozilla.org/en-US/firefox/addon/skylink-webrtc-tools/))         |
+| Opera             | `26`         | MacOS / Win / Ubuntu / Android |  Yes (if configured with extension)                       | 
 | Edge              | `13.10547`^  | Win                      |  -                        |
 | Bowser            | `0.6.1`      | iOS 9.x only**           |  -                        |
+| Safari (Native)   | `11`         | MacOS 10.13.x and iOS 11 |  No. Use Safari with the Temasys plugin*** |
 | Safari (Plugin)   | `7`          | MacOS                    | Yes ([custom build Plugin](https://temasys.io/plugin/#commercial-licensing)) |
 | IE (Plugin)       | `9`          | Win                      | Yes ([custom build Plugin](https://temasys.io/plugin/#commercial-licensing)) |
+
 *Note that currently Edge doesn't support `RTCDataChannel` API.
+
 **There seems to be issues for Bowser version `0.6.1` working with iOS 10.x version.
+
+*** To use the Temasys plugin on Safari 11 and above, set the flag ```AdapterJS.options.forceSafariPlugin = true``` BEFORE including AdapterJS.
 
 ### How it looks like if WebRTC is not supported by browser
 ![Plugin Install Bar in IE and Safari](http://temasys.github.io/resources/img/adapterheader.png)
@@ -156,7 +161,7 @@ Expected outcome should be: `checking > connected > completed`. What was receive
 
 
 ##### `checkMediaDataChannelSettings(peerAgentBrowser, peerAgentVersion, callback, constraints)` : None
-> **Note** that this function has been deprecated as this is based off older versions of browsers interopability in which is lower than our minimum supported browser versions.
+> **Note** that this function has been deprecated as this is based off older versions of browsers interoperability in which is lower than our minimum supported browser versions.
 
 ```javascript
 // Right now we are not yet doing the offer. We are just checking if we should be the offerer instead of the other peer
@@ -174,9 +179,9 @@ checkMediaDataChannelSettings(peerAgentBrowser, peerAgentVersion
 }, inputConstraints);
 ```
 
-This handles all `MediaStream` and `DataChannel` differences for interopability cross-browsers. The method has to be called before creating the offer to check if peer should create the offer.
+This handles all `MediaStream` and `DataChannel` differences for interoperability cross-browsers. The method has to be called before creating the offer to check if peer should create the offer.
 
-For some older (`20`+) versions of Firefox and Chrome `MediaStream` interopability, `MozDontOfferDataChannel` has to be used, and hence Firefox cannot establish a `DataChannel` connection as an offerer, and results in no DataChannel connection. To achieve both `MediaStream` and `DataChannel` connection interopability, Chrome or other browsers has to be the one creating the offer.
+For some older (`20`+) versions of Firefox and Chrome `MediaStream` interoperability, `MozDontOfferDataChannel` has to be used, and hence Firefox cannot establish a `DataChannel` connection as an offerer, and results in no DataChannel connection. To achieve both `MediaStream` and `DataChannel` connection interoperability, Chrome or other browsers has to be the one creating the offer.
 
 - **Parameters:**
 
@@ -241,12 +246,14 @@ AdapterJS `0.12.0`+ offers cross-browser screensharing in Chrome `34`+, Firefox 
 
 To use the screensharing functionality, reference `publish/adapter.screenshare.js` and add the `mediaSource: 'window'` setting to the video media constraints. This requires HTTPS!
 
+Note that the the `mediaSource` property takes in String, or Array in which multiple sources is supported for Chrome / Opera sources. For Firefox, if an Array is provided, it takes the first item in the Array.
+
 **Example:**
 
 ```javascript
 window.navigator.getUserMedia({
   video: {
-    mediaSource: 'window' || 'screen'
+    mediaSource: 'window' || 'screen' || ['tab', 'audio'] || ['window' || 'screen']
   }
 }, function (stream) {
   console.log('Received stream', stream);
@@ -255,12 +262,64 @@ window.navigator.getUserMedia({
 });
 ```
 
+**List of valid screensharing (`mediaSource`) sources:**
+
+| Sources | Description | Browsers that supports it |
+| ------- | ----------- | --------- |
+| `"window"`  | Fetches the list of application windows | Chrome, Opera, Firefox, IE, Safari |
+| `"screen"`  | Fetches the list of display screens     | Chrome, Opera, Firefox, IE, Safari |
+| `"tab"`  | Fetches the list of browser tabs | Chrome, Opera |
+| `"browser"`  | Fetches the list of browser windows | Firefox (Requires to configure `about:config` to enable `media.getusermedia.browser.enabled`)  |
+| `"application"`  | Fetches the list of applications | Firefox |
+| `"camera"`  | Fetches the list of cameras | Firefox |
+| `["tab", "audio"]`  | Fetches `"tab"` with its audio | Chrome, Opera (Enable `constraints.audio` to retrieve tab audio) |
+| `["window", "screen"]`  | Fetches `"screen"` and `"window"` | Chrome, Opera, IE, Safari |
+| `["window", "screen", "tab"]` | Fetches `"screen"`, `"window"` and `"tab"` | Chrome, Opera |
+| `["window", "tab"]` | Fetches `"window"` and `"tab"` | Chrome, Opera |
+| `["screen", "tab"]` | Fetches `"screen"` and `"tab"` | Chrome, Opera |
+| `AdapterJS.WebRTCPlugin.plugin.screensharingKeys.screenOrWindow`  | Same as `["window","screen"]` | IE, Safari |
+| `AdapterJS.WebRTCPlugin.plugin.screensharingKeys.screensharingKey` | Deprecated. Same as `["window","screen"]`. | IE, Safari |
+| `AdapterJS.WebRTCPlugin.plugin.screensharingKeys.screen`  | Same as `"screen"` | IE, Safari |
+| `AdapterJS.WebRTCPlugin.plugin.screensharingKeys.window` | Deprecated. Same as `"window"`. | IE, Safari |
+
+
+**Configuring extension settings:**
+
+To configure your AdapterJS screensharing extensions, configure this before referencing the script for `adapter.screenshare.js` as an example:
+
+```
+var AdapterJS = {};
+
+/**
+ * Configure extension settings. For developers using "adapter.screenshare.js"
+ */
+AdapterJS.extensionInfo = {
+  chrome: {
+    // Configure the extension ID for Chrome
+    extensionId: 'xxx',
+    // Configure the extension webstore link for Chrome
+    extensionLink: 'xxx',
+    // Configure the extension iframe link (detectRTC) for Chrome - for older Chrome extension codebase
+    iframeLink: 'xxx'
+  },
+  firefox: {
+    // Configure the addon link (legacy if available and uploaded before restriction) for Firefox 51 and below
+    extensionLink: 'xxx'
+  },
+  opera: {
+    // Configure the extension ID for Opera
+    extensionId: 'xxx',
+    // Configure the extension webstore link for Opera
+    extensionLink: 'xxx'
+  }
+};
+```
+
 ## Setup this project
-1. Copy this repository with submodules (`git clone --recursive ...`), or run `git submodule init` and `git submodule update`.
-2. Install or update to at lest version `0.10.26` of node and version `1.4.6 `of npm.
-3. Install `grunt-cli`. (See: http://gruntjs.com/getting-started)
-4. Run `npm install` to install dev dependencies.
-5. Run `npm install -g browserify` and `npm install -g testling` (might require sudo) to install the necessary tools to test locally
+1. Install or update to at lest version `0.10.26` of node and version `1.4.6 `of npm.
+2. Install `grunt-cli`. (See: http://gruntjs.com/getting-started)
+3. Run `npm install` to install dev dependencies.
+4. Run `npm install -g browserify` and `npm install -g testling` (might require sudo) to install the necessary tools to test locally
 
 
 ## Development
@@ -288,9 +347,6 @@ You can configure the browser to test in `Gruntfile.js` (see the karma target).
 You can also run `grunt karma` to run the test and bypass the publish step.
 
 (Mac only) If you are testing the Temasys WebRTC Plugin, you can run `osascript tests/mac.watcher.scpt` to automatically validate the permission popup.
-
-##### `third_party/`
-The `webrtc/adapter` dependency linked repo at commit version.
 
 ## License
 APACHE 2.0 - http://www.apache.org/licenses/LICENSE-2.0.html
