@@ -12,8 +12,7 @@ AdapterJS.options.hidePluginInstallPrompt = true;
 AdapterJS.options.hidePluginInstallPrompt = !!AdapterJS.options.hidePluginInstallPrompt;
 
 // uncomment to force the use of the plugin on Safari
-// AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = !!AdapterJS.options.forceSafariPlugin;
+AdapterJS.options.forceSafariPlugin = true;
 
 // AdapterJS version
 AdapterJS.VERSION = '@@version';
@@ -690,11 +689,11 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
       return iceServers;
     };
   } else if (AdapterJS.webrtcDetectedType === 'AppleWebKit') {
-    attachMediaStream = function(element, stream) {
+    AdapterJS.attachMediaStream = function(element, stream) {
       element.srcObject = stream;
       return element;
     };
-    reattachMediaStream = function(to, from) {
+    AdapterJS.reattachMediaStream = function(to, from) {
       to.srcObject = from.srcObject;
       return to;
     };

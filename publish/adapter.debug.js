@@ -1,4 +1,4 @@
-/*! adapterjs - v0.15.0 - 2017-09-05 */
+/*! adapterjs - v0.15.1 - 2017-09-22 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -10,15 +10,14 @@ AdapterJS.options = AdapterJS.options || {};
 AdapterJS.options.getAllCams = !!AdapterJS.options.getAllCams;
 
 // uncomment to prevent the install prompt when the plugin in not yet installed
-// AdapterJS.options.hidePluginInstallPrompt = true;
+AdapterJS.options.hidePluginInstallPrompt = true;
 AdapterJS.options.hidePluginInstallPrompt = !!AdapterJS.options.hidePluginInstallPrompt;
 
 // uncomment to force the use of the plugin on Safari
-// AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = !!AdapterJS.options.forceSafariPlugin;
+AdapterJS.options.forceSafariPlugin = true;
 
 // AdapterJS version
-AdapterJS.VERSION = '0.15.0';
+AdapterJS.VERSION = '0.15.1';
 
 // This function will be called when the WebRTC API is ready to be used
 // Whether it is the native implementation (Chrome, Firefox, Opera) or
@@ -74,28 +73,34 @@ AdapterJS.WebRTCPlugin = AdapterJS.WebRTCPlugin || {};
 
 // The object to store plugin information
 /* jshint ignore:start */
-AdapterJS.WebRTCPlugin.pluginInfo = AdapterJS.WebRTCPlugin.pluginInfo || {
-  prefix : 'Tem',
-  plugName : 'TemWebRTCPlugin',
-  pluginId : 'plugin0',
-  type : 'application/x-temwebrtcplugin',
-  onload : '__TemWebRTCReady0',
-  portalLink : 'https://skylink.io/plugin/',
-  downloadLink : null, //set below
-  companyName: 'Temasys',
-  downloadLinks : {
-    mac: 'https://bit.ly/webrtcpluginpkg',
-    win: 'https://bit.ly/webrtcpluginmsi'
+AdapterJS.sl = {};
+AdapterJS.sl.pluginName = 'StarLeafBrowserPlugin';
+AdapterJS.sl.makeDownloadLink = function() {
+  if(SLUI_CONFIG.webrtcPlugin && SLUI_CONFIG.webrtcPlugin.plugin_version) {
+    var link = "https://" + SLUI_CONFIG.webrtcPlugin.hostname + "/webrtcplugin/"
+                          + SLUI_CONFIG.webrtcPlugin.plugin_version + "/" + AdapterJS.sl.pluginName;
+    if(!!navigator.platform.match(/^Mac/i)) {
+      link += ".pkg";
+    }
+    else if(!!navigator.platform.match(/^Win/i)) {
+      link+= ".msi";
+    }
+    return link;
+  } else {
+    return null;
   }
 };
-if(typeof AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks !== "undefined" && AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks !== null) {
-  if(!!navigator.platform.match(/^Mac/i)) {
-    AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks.mac;
-  }
-  else if(!!navigator.platform.match(/^Win/i)) {
-    AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks.win;
-  }
-}
+
+AdapterJS.WebRTCPlugin.pluginInfo = AdapterJS.WebRTCPlugin.pluginInfo || {
+  prefix : 'SLF',
+  plugName : AdapterJS.sl.pluginName,
+  pluginId : 'plugin0',
+  type : 'application/x-starleafwebrtcbrowserplugin',
+  onload : '__TemWebRTCReady0',
+  portalLink : 'http://support.starleaf.com',
+  downloadLink :  AdapterJS.sl.makeDownloadLink(),
+  companyName: 'StarLeaf'
+};
 
 /* jshint ignore:end */
 
@@ -208,20 +213,6 @@ AdapterJS.maybeThroughWebRTCReady = function() {
     } else if (typeof(AdapterJS.onwebrtcready) === 'function') {
       AdapterJS.onwebrtcready(AdapterJS.WebRTCPlugin.plugin !== null);
     }
-  }
-};
-
-// Text namespace
-AdapterJS.TEXT = {
-  PLUGIN: {
-    REQUIRE_INSTALLATION: 'This website requires you to install a WebRTC-enabling plugin ' +
-      'to work on this browser.',
-    NOT_SUPPORTED: 'Your browser does not support WebRTC.',
-    BUTTON: 'Install Now'
-  },
-  REFRESH: {
-    REQUIRE_REFRESH: 'Please refresh page',
-    BUTTON: 'Refresh Page'
   }
 };
 
@@ -385,7 +376,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     } else { // desktop
       webrtcDetectedType    = hasNativeImpl && !AdapterJS.options.forceSafariPlugin ? 'AppleWebKit' : 'plugin';
     }
-    webrtcDetectedDCSupport = 'SCTP'; 
+    webrtcDetectedDCSupport = 'SCTP';
   }
 
   // Scope it to AdapterJS and window for better consistency
@@ -393,7 +384,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
   AdapterJS.webrtcDetectedVersion   = window.webrtcDetectedVersion   = webrtcDetectedVersion;
   AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion    = webrtcMinimumVersion;
   AdapterJS.webrtcDetectedType      = window.webrtcDetectedType      = webrtcDetectedType;
-  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport; 
+  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport;
 };
 
 AdapterJS.addEvent = function(elem, evnt, func) {
@@ -404,68 +395,6 @@ AdapterJS.addEvent = function(elem, evnt, func) {
   } else { // No much to do
     elem[evnt] = func;
   }
-};
-
-AdapterJS.renderNotificationBar = function (message, buttonText, buttonCallback) {
-  // only inject once the page is ready
-  if (document.readyState !== 'interactive' && document.readyState !== 'complete') {
-    return;
-  }
-
-  var w = window;
-  var i = document.createElement('iframe');
-  i.name = 'adapterjs-alert';
-  i.style.position = 'fixed';
-  i.style.top = '-41px';
-  i.style.left = 0;
-  i.style.right = 0;
-  i.style.width = '100%';
-  i.style.height = '40px';
-  i.style.backgroundColor = '#ffffe1';
-  i.style.border = 'none';
-  i.style.borderBottom = '1px solid #888888';
-  i.style.zIndex = '9999999';
-  if(typeof i.style.webkitTransition === 'string') {
-    i.style.webkitTransition = 'all .5s ease-out';
-  } else if(typeof i.style.transition === 'string') {
-    i.style.transition = 'all .5s ease-out';
-  }
-  document.body.appendChild(i);
-  var c = (i.contentWindow) ? i.contentWindow :
-    (i.contentDocument.document) ? i.contentDocument.document : i.contentDocument;
-  c.document.open();
-  c.document.write('<span style="display: inline-block; font-family: Helvetica, Arial,' +
-    'sans-serif; font-size: .9rem; padding: 4px; vertical-align: ' +
-    'middle; cursor: default;">' + message + '</span>');
-  if(buttonText && typeof buttonCallback === 'function') {
-    c.document.write('<button id="okay">' + buttonText + '</button><button id="cancel">Cancel</button>');
-    c.document.close();
-
-    // On click on okay
-    AdapterJS.addEvent(c.document.getElementById('okay'), 'click', function (e) {
-      e.preventDefault();
-      try {
-        e.cancelBubble = true;
-      } catch(error) { }
-      buttonCallback(e);
-    });
-
-    // On click on Cancel - all bars has same logic so keeping it that way for now
-    AdapterJS.addEvent(c.document.getElementById('cancel'), 'click', function(e) {
-      w.document.body.removeChild(i);
-    });
-  } else {
-    c.document.close();
-  }
-  setTimeout(function() {
-    if(typeof i.style.webkitTransform === 'string') {
-      i.style.webkitTransform = 'translateY(40px)';
-    } else if(typeof i.style.transform === 'string') {
-      i.style.transform = 'translateY(40px)';
-    } else {
-      i.style.top = '0px';
-    }
-  }, 300);
 };
 
 // -----------------------------------------------------------
@@ -605,15 +534,10 @@ RTCSessionDescription = (typeof RTCSessionDescription === 'function') ?
 RTCIceCandidate = (typeof RTCIceCandidate === 'function') ?
   RTCIceCandidate : null;
 
-// Get UserMedia (only difference is the prefix).
-// Code from Adam Barth.
-getUserMedia = null;
+AdapterJS.attachMediaStream = null;
+AdapterJS.reattachMediaStream = null;
 
-// Attach a media stream to an element.
-attachMediaStream = null;
-
-// Re-attach a media stream to an element.
-reattachMediaStream = null;
+navigator.mediaDevices = navigator.mediaDevices || {};
 
 
 // Detected browser agent name. Types are:
@@ -5054,12 +4978,12 @@ module.exports = {
     };
 
     // Attach a media stream to an element.
-    attachMediaStream = function(element, stream) {
+    AdapterJS.attachMediaStream = function(element, stream) {
       element.srcObject = stream;
       return element;
     };
 
-    reattachMediaStream = function(to, from) {
+    AdapterJS.reattachMediaStream = function(to, from) {
       to.srcObject = from.srcObject;
       return to;
     };
@@ -5108,7 +5032,7 @@ module.exports = {
     };
   } else if ( navigator.webkitGetUserMedia ) {
     // Attach a media stream to an element.
-    attachMediaStream = function(element, stream) {
+    AdapterJS.attachMediaStream = function(element, stream) {
       if (AdapterJS.webrtcDetectedVersion >= 43) {
         element.srcObject = stream;
       } else if (typeof element.src !== 'undefined') {
@@ -5120,7 +5044,7 @@ module.exports = {
       return element;
     };
 
-    reattachMediaStream = function(to, from) {
+    AdapterJS.reattachMediaStream = function(to, from) {
       if (AdapterJS.webrtcDetectedVersion >= 43) {
         to.srcObject = from.srcObject;
       } else {
@@ -5167,11 +5091,11 @@ module.exports = {
       return iceServers;
     };
   } else if (AdapterJS.webrtcDetectedType === 'AppleWebKit') {
-    attachMediaStream = function(element, stream) {
+    AdapterJS.attachMediaStream = function(element, stream) {
       element.srcObject = stream;
       return element;
     };
-    reattachMediaStream = function(to, from) {
+    AdapterJS.reattachMediaStream = function(to, from) {
       to.srcObject = from.srcObject;
       return to;
     };
@@ -5184,12 +5108,12 @@ module.exports = {
     }
   } else if (navigator.mediaDevices && navigator.userAgent.match(/Edge\/(\d+).(\d+)$/)) {
     // Attach a media stream to an element.
-    attachMediaStream = function(element, stream) {
+    AdapterJS.attachMediaStream = function(element, stream) {
       element.srcObject = stream;
       return element;
     };
 
-    reattachMediaStream = function(to, from) {
+    AdapterJS.reattachMediaStream = function(to, from) {
       to.srcObject = from.srcObject;
       return to;
     };
@@ -5197,7 +5121,7 @@ module.exports = {
 
   // Need to override attachMediaStream and reattachMediaStream
   // to support the plugin's logic
-  attachMediaStream_base = attachMediaStream;
+  var attachMediaStream_base = AdapterJS.attachMediaStream;
 
   if (AdapterJS.webrtcDetectedBrowser === 'opera') {
     attachMediaStream_base = function (element, stream) {
@@ -5210,7 +5134,7 @@ module.exports = {
     };
   }
 
-  attachMediaStream = function (element, stream) {
+  AdapterJS.attachMediaStream = function (element, stream) {
     if ((AdapterJS.webrtcDetectedBrowser === 'chrome' ||
          AdapterJS.webrtcDetectedBrowser === 'opera') &&
         !stream) {
@@ -5221,27 +5145,13 @@ module.exports = {
     }
     return element;
   };
-  reattachMediaStream_base = reattachMediaStream;
-  reattachMediaStream = function (to, from) {
+  var reattachMediaStream_base = AdapterJS.reattachMediaStream;
+  AdapterJS.reattachMediaStream = function (to, from) {
     reattachMediaStream_base(to, from);
     return to;
   };
 
   // Propagate attachMediaStream and gUM in window and AdapterJS
-  window.attachMediaStream      = attachMediaStream;
-  window.reattachMediaStream    = reattachMediaStream;
-  window.getUserMedia           = function(constraints, onSuccess, onFailure) {
-    navigator.getUserMedia(constraints, onSuccess, onFailure);
-  };
-  AdapterJS.attachMediaStream   = attachMediaStream;
-  AdapterJS.reattachMediaStream = reattachMediaStream;
-  AdapterJS.getUserMedia        = getUserMedia;
-
-  // Removed Google defined promises when promise is not defined
-  if (typeof Promise === 'undefined') {
-    requestUserMedia = null;
-  }
-
   AdapterJS.maybeThroughWebRTCReady();
 
   // END OF EXTENSION OF CHROME, FIREFOX AND EDGE
@@ -5617,38 +5527,24 @@ module.exports = {
       return cc;
     };
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// getUserMedia
-    ////////////////////////////////////////////////////////////////////////////
-    getUserMedia = function (constraints, successCallback, failureCallback) {
+    AdapterJS.getUserMedia = function (constraints) {
       var cc = {};
       cc.audio = constraints.audio ?
         constraintsToPlugin(constraints.audio) : false;
       cc.video = constraints.video ?
         constraintsToPlugin(constraints.video) : false;
 
-      AdapterJS.WebRTCPlugin.callWhenPluginReady(function() {
-        AdapterJS.WebRTCPlugin.plugin.
-          getUserMedia(cc, successCallback, failureCallback);
+      return new Promise(function(resolve, reject) {
+        AdapterJS.WebRTCPlugin.callWhenPluginReady(function() {
+          AdapterJS.WebRTCPlugin.plugin.
+            getUserMedia(cc, resolve, reject);
+        });
       });
     };
-    window.navigator.getUserMedia = getUserMedia;
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// mediaDevices
-    ////////////////////////////////////////////////////////////////////////////
-    if (typeof Promise !== 'undefined') {
-      requestUserMedia = function(constraints) {
-        return new Promise(function(resolve, reject) {
-          try {
-            getUserMedia(constraints, resolve, reject);
-          } catch (error) {
-            reject(error);
-          }
-        });
-      };
-      navigator.mediaDevices = {getUserMedia: requestUserMedia,
-                                enumerateDevices: function() {
+    // Always assume availability of Promise (by shim or native)
+    navigator.mediaDevices = {
+      getUserMedia: AdapterJS.getUserMedia,
+      enumerateDevices: function() {
         return new Promise(function(resolve) {
           var kinds = {audio: 'audioinput', video: 'videoinput'};
           return MediaStreamTrack.getSources(function(devices) {
@@ -5661,13 +5557,10 @@ module.exports = {
             }));
           });
         });
-      }};
-    }
+      }
+    };
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// attachMediaStream
-    ////////////////////////////////////////////////////////////////////////////
-    attachMediaStream = function (element, stream) {
+    AdapterJS.attachMediaStream = function (element, stream) {
       if (!element || !element.parentNode) {
         return;
       }
@@ -5750,10 +5643,7 @@ module.exports = {
       return newElement;
     };
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// reattachMediaStream
-    ////////////////////////////////////////////////////////////////////////////
-    reattachMediaStream = function (to, from) {
+    AdapterJS.reattachMediaStream = function (to, from) {
       var stream = null;
       var children = from.children;
       for (var i = 0; i !== children.length; ++i) {
@@ -5765,19 +5655,11 @@ module.exports = {
         }
       }
       if (stream !== null) {
-        return attachMediaStream(to, stream);
+        return AdapterJS.attachMediaStream(to, stream);
       } else {
         console.log('Could not find the stream associated with this element');
       }
     };
-
-    // Propagate attachMediaStream and gUM in window and AdapterJS
-    window.attachMediaStream      = attachMediaStream;
-    window.reattachMediaStream    = reattachMediaStream;
-    window.getUserMedia           = getUserMedia;
-    AdapterJS.attachMediaStream   = attachMediaStream;
-    AdapterJS.reattachMediaStream = reattachMediaStream;
-    AdapterJS.getUserMedia        = getUserMedia;
 
     AdapterJS.forwardEventHandlers = function (destElem, srcElem, prototype) {
       var properties = Object.getOwnPropertyNames( prototype );
@@ -5820,55 +5702,7 @@ module.exports = {
   // This function will be called if the plugin is needed (browser different
   // from Chrome or Firefox), but the plugin is not installed.
   AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCb = AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCb ||
-    function() {
-      AdapterJS.addEvent(document,
-                        'readystatechange',
-                         AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCbPriv);
-      AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCbPriv();
-    };
-
-  AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCbPriv = function () {
-    if (AdapterJS.options.hidePluginInstallPrompt) {
-      return;
-    }
-
-    var downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLink;
-    if(downloadLink) { // if download link
-      var popupString;
-      if (AdapterJS.WebRTCPlugin.pluginInfo.portalLink) { // is portal link
-       popupString = 'This website requires you to install the ' +
-        ' <a href="' + AdapterJS.WebRTCPlugin.pluginInfo.portalLink +
-        '" target="_blank">' + AdapterJS.WebRTCPlugin.pluginInfo.companyName +
-        ' WebRTC Plugin</a>' +
-        ' to work on this browser.';
-      } else { // no portal link, just print a generic explanation
-       popupString = AdapterJS.TEXT.PLUGIN.REQUIRE_INSTALLATION;
-      }
-
-      AdapterJS.renderNotificationBar(popupString, AdapterJS.TEXT.PLUGIN.BUTTON, function () {
-        window.open(downloadLink, '_top');
-
-        var pluginInstallInterval = setInterval(function(){
-          if(AdapterJS.webrtcDetectedBrowser !== 'IE') {
-            navigator.plugins.refresh(false);
-          }
-          AdapterJS.WebRTCPlugin.isPluginInstalled(
-            AdapterJS.WebRTCPlugin.pluginInfo.prefix,
-            AdapterJS.WebRTCPlugin.pluginInfo.plugName,
-            AdapterJS.WebRTCPlugin.pluginInfo.type,
-            function() { // plugin now installed
-              clearInterval(pluginInstallInterval);
-              AdapterJS.WebRTCPlugin.defineWebRTCInterface();
-            },
-            function() {
-              // still no plugin detected, nothing to do
-            });
-        } , 500);
-      });
-    } else { // no download link, just print a generic explanation
-      AdapterJS.renderNotificationBar(AdapterJS.TEXT.PLUGIN.NOT_SUPPORTED);
-    }
-  };
+    function() {};
 
 
   // Try to detect the plugin and act accordingly
