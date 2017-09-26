@@ -5845,34 +5845,6 @@ if(typeof exports !== 'undefined') {
   module.exports = AdapterJS;
 }
 
-// Define extension popup bar text
-AdapterJS.TEXT.EXTENSION = {
-  REQUIRE_INSTALLATION_FF: 'To enable screensharing you need to install the Skylink WebRTC tools Firefox Add-on.',
-  REQUIRE_INSTALLATION_CHROME: 'To enable screensharing you need to install the Skylink WebRTC tools Chrome Extension.',
-  REQUIRE_REFRESH: 'Please refresh this page after the Skylink WebRTC tools extension has been installed.',
-  BUTTON_FF: 'Install Now',
-  BUTTON_CHROME: 'Go to Chrome Web Store'
-};
-
-// Define extension settings
-AdapterJS.extensionInfo =  AdapterJS.extensionInfo || {
-  chrome: {
-    extensionId: 'ljckddiekopnnjoeaiofddfhgnbdoafc',
-    extensionLink: 'https://chrome.google.com/webstore/detail/skylink-webrtc-tools/ljckddiekopnnjoeaiofddfhgnbdoafc',
-    // Deprecated! Define this to use iframe method that works with previous extension codebase that does not honor "mediaSource" flag
-    iframeLink: 'https://cdn.temasys.com.sg/skylink/extensions/detectRTC.html'
-  },
-  // Required only for Firefox 51 and below
-  firefox: {
-    extensionLink: 'https://addons.mozilla.org/en-US/firefox/addon/skylink-webrtc-tools/'
-  },
-  opera: {
-    // Define the extensionId and extensionLink to integrate the Opera screensharing extension
-    extensionId: null,
-    extensionLink: null
-  }
-};
-
 AdapterJS._mediaSourcePolyfillIsDefined = false;
 AdapterJS._defineMediaSourcePolyfill = function () {
   // Sanity checks to prevent re-defining the polyfills again in any case.
