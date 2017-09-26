@@ -5,15 +5,15 @@ AdapterJS.options = AdapterJS.options || {};
 
 // uncomment to get virtual webcams
 // AdapterJS.options.getAllCams = true;
-AdapterJS.options.getAllCams = !!AdapterJS.options.getAllCams;
+AdapterJS.options.getAllCams = false;
 
 // uncomment to prevent the install prompt when the plugin in not yet installed
 // AdapterJS.options.hidePluginInstallPrompt = true;
-AdapterJS.options.hidePluginInstallPrompt = !!AdapterJS.options.hidePluginInstallPrompt;
+AdapterJS.options.hidePluginInstallPrompt = true;
 
 // uncomment to force the use of the plugin on Safari
 // AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = !!AdapterJS.options.forceSafariPlugin;
+AdapterJS.options.forceSafariPlugin = true;
 
 // AdapterJS version
 AdapterJS.VERSION = '@@version';
@@ -187,20 +187,6 @@ AdapterJS.maybeThroughWebRTCReady = function() {
   }
 };
 
-// Text namespace
-AdapterJS.TEXT = {
-  PLUGIN: {
-    REQUIRE_INSTALLATION: 'This website requires you to install a WebRTC-enabling plugin ' +
-      'to work on this browser.',
-    NOT_SUPPORTED: 'Your browser does not support WebRTC.',
-    BUTTON: 'Install Now'
-  },
-  REFRESH: {
-    REQUIRE_REFRESH: 'Please refresh page',
-    BUTTON: 'Refresh Page'
-  }
-};
-
 // The result of ice connection states.
 // - starting: Ice connection is starting.
 // - checking: Ice connection is checking.
@@ -361,7 +347,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     } else { // desktop
       webrtcDetectedType    = hasNativeImpl && !AdapterJS.options.forceSafariPlugin ? 'AppleWebKit' : 'plugin';
     }
-    webrtcDetectedDCSupport = 'SCTP'; 
+    webrtcDetectedDCSupport = 'SCTP';
   }
 
   // Scope it to AdapterJS and window for better consistency
@@ -369,7 +355,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
   AdapterJS.webrtcDetectedVersion   = window.webrtcDetectedVersion   = webrtcDetectedVersion;
   AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion    = webrtcMinimumVersion;
   AdapterJS.webrtcDetectedType      = window.webrtcDetectedType      = webrtcDetectedType;
-  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport; 
+  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport;
 };
 
 AdapterJS.addEvent = function(elem, evnt, func) {
@@ -1434,43 +1420,6 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
   AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCbPriv = function () {
     if (AdapterJS.options.hidePluginInstallPrompt) {
       return;
-    }
-
-    var downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLink;
-    if(downloadLink) { // if download link
-      var popupString;
-      if (AdapterJS.WebRTCPlugin.pluginInfo.portalLink) { // is portal link
-       popupString = 'This website requires you to install the ' +
-        ' <a href="' + AdapterJS.WebRTCPlugin.pluginInfo.portalLink +
-        '" target="_blank">' + AdapterJS.WebRTCPlugin.pluginInfo.companyName +
-        ' WebRTC Plugin</a>' +
-        ' to work on this browser.';
-      } else { // no portal link, just print a generic explanation
-       popupString = AdapterJS.TEXT.PLUGIN.REQUIRE_INSTALLATION;
-      }
-
-      AdapterJS.renderNotificationBar(popupString, AdapterJS.TEXT.PLUGIN.BUTTON, function () {
-        window.open(downloadLink, '_top');
-
-        var pluginInstallInterval = setInterval(function(){
-          if(AdapterJS.webrtcDetectedBrowser !== 'IE') {
-            navigator.plugins.refresh(false);
-          }
-          AdapterJS.WebRTCPlugin.isPluginInstalled(
-            AdapterJS.WebRTCPlugin.pluginInfo.prefix,
-            AdapterJS.WebRTCPlugin.pluginInfo.plugName,
-            AdapterJS.WebRTCPlugin.pluginInfo.type,
-            function() { // plugin now installed
-              clearInterval(pluginInstallInterval);
-              AdapterJS.WebRTCPlugin.defineWebRTCInterface();
-            },
-            function() {
-              // still no plugin detected, nothing to do
-            });
-        } , 500);
-      });
-    } else { // no download link, just print a generic explanation
-      AdapterJS.renderNotificationBar(AdapterJS.TEXT.PLUGIN.NOT_SUPPORTED);
     }
   };
 

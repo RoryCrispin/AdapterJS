@@ -1,4 +1,4 @@
-/*! adapterjs - v0.15.0 - 2017-09-05 */
+/*! adapterjs - v0.15.0 - 2017-09-26 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -7,15 +7,15 @@ AdapterJS.options = AdapterJS.options || {};
 
 // uncomment to get virtual webcams
 // AdapterJS.options.getAllCams = true;
-AdapterJS.options.getAllCams = !!AdapterJS.options.getAllCams;
+AdapterJS.options.getAllCams = false;
 
 // uncomment to prevent the install prompt when the plugin in not yet installed
 // AdapterJS.options.hidePluginInstallPrompt = true;
-AdapterJS.options.hidePluginInstallPrompt = !!AdapterJS.options.hidePluginInstallPrompt;
+AdapterJS.options.hidePluginInstallPrompt = true;
 
 // uncomment to force the use of the plugin on Safari
 // AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = !!AdapterJS.options.forceSafariPlugin;
+AdapterJS.options.forceSafariPlugin = true;
 
 // AdapterJS version
 AdapterJS.VERSION = '0.15.0';
@@ -74,28 +74,34 @@ AdapterJS.WebRTCPlugin = AdapterJS.WebRTCPlugin || {};
 
 // The object to store plugin information
 /* jshint ignore:start */
-AdapterJS.WebRTCPlugin.pluginInfo = AdapterJS.WebRTCPlugin.pluginInfo || {
-  prefix : 'Tem',
-  plugName : 'TemWebRTCPlugin',
-  pluginId : 'plugin0',
-  type : 'application/x-temwebrtcplugin',
-  onload : '__TemWebRTCReady0',
-  portalLink : 'https://skylink.io/plugin/',
-  downloadLink : null, //set below
-  companyName: 'Temasys',
-  downloadLinks : {
-    mac: 'https://bit.ly/webrtcpluginpkg',
-    win: 'https://bit.ly/webrtcpluginmsi'
+AdapterJS.sl = {};
+AdapterJS.sl.pluginName = 'StarLeafBrowserPlugin';
+AdapterJS.sl.makeDownloadLink = function() {
+  if(SLUI_CONFIG.webrtcPlugin && SLUI_CONFIG.webrtcPlugin.plugin_version) {
+    var link = "https://" + SLUI_CONFIG.webrtcPlugin.hostname + "/webrtcplugin/"
+                          + SLUI_CONFIG.webrtcPlugin.plugin_version + "/" + AdapterJS.sl.pluginName;
+    if(!!navigator.platform.match(/^Mac/i)) {
+      link += ".pkg";
+    }
+    else if(!!navigator.platform.match(/^Win/i)) {
+      link+= ".msi";
+    }
+    return link;
+  } else {
+    return null;
   }
 };
-if(typeof AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks !== "undefined" && AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks !== null) {
-  if(!!navigator.platform.match(/^Mac/i)) {
-    AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks.mac;
-  }
-  else if(!!navigator.platform.match(/^Win/i)) {
-    AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks.win;
-  }
-}
+
+AdapterJS.WebRTCPlugin.pluginInfo = AdapterJS.WebRTCPlugin.pluginInfo || {
+  prefix : 'SLF',
+  plugName : AdapterJS.sl.pluginName,
+  pluginId : 'plugin0',
+  type : 'application/x-starleafwebrtcbrowserplugin',
+  onload : '__TemWebRTCReady0',
+  portalLink : 'http://support.starleaf.com',
+  downloadLink :  AdapterJS.sl.makeDownloadLink(),
+  companyName: 'StarLeaf'
+};
 
 /* jshint ignore:end */
 
@@ -208,20 +214,6 @@ AdapterJS.maybeThroughWebRTCReady = function() {
     } else if (typeof(AdapterJS.onwebrtcready) === 'function') {
       AdapterJS.onwebrtcready(AdapterJS.WebRTCPlugin.plugin !== null);
     }
-  }
-};
-
-// Text namespace
-AdapterJS.TEXT = {
-  PLUGIN: {
-    REQUIRE_INSTALLATION: 'This website requires you to install a WebRTC-enabling plugin ' +
-      'to work on this browser.',
-    NOT_SUPPORTED: 'Your browser does not support WebRTC.',
-    BUTTON: 'Install Now'
-  },
-  REFRESH: {
-    REQUIRE_REFRESH: 'Please refresh page',
-    BUTTON: 'Refresh Page'
   }
 };
 
@@ -385,7 +377,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     } else { // desktop
       webrtcDetectedType    = hasNativeImpl && !AdapterJS.options.forceSafariPlugin ? 'AppleWebKit' : 'plugin';
     }
-    webrtcDetectedDCSupport = 'SCTP'; 
+    webrtcDetectedDCSupport = 'SCTP';
   }
 
   // Scope it to AdapterJS and window for better consistency
@@ -393,7 +385,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
   AdapterJS.webrtcDetectedVersion   = window.webrtcDetectedVersion   = webrtcDetectedVersion;
   AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion    = webrtcMinimumVersion;
   AdapterJS.webrtcDetectedType      = window.webrtcDetectedType      = webrtcDetectedType;
-  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport; 
+  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport;
 };
 
 AdapterJS.addEvent = function(elem, evnt, func) {
@@ -5830,43 +5822,6 @@ module.exports = {
   AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCbPriv = function () {
     if (AdapterJS.options.hidePluginInstallPrompt) {
       return;
-    }
-
-    var downloadLink = AdapterJS.WebRTCPlugin.pluginInfo.downloadLink;
-    if(downloadLink) { // if download link
-      var popupString;
-      if (AdapterJS.WebRTCPlugin.pluginInfo.portalLink) { // is portal link
-       popupString = 'This website requires you to install the ' +
-        ' <a href="' + AdapterJS.WebRTCPlugin.pluginInfo.portalLink +
-        '" target="_blank">' + AdapterJS.WebRTCPlugin.pluginInfo.companyName +
-        ' WebRTC Plugin</a>' +
-        ' to work on this browser.';
-      } else { // no portal link, just print a generic explanation
-       popupString = AdapterJS.TEXT.PLUGIN.REQUIRE_INSTALLATION;
-      }
-
-      AdapterJS.renderNotificationBar(popupString, AdapterJS.TEXT.PLUGIN.BUTTON, function () {
-        window.open(downloadLink, '_top');
-
-        var pluginInstallInterval = setInterval(function(){
-          if(AdapterJS.webrtcDetectedBrowser !== 'IE') {
-            navigator.plugins.refresh(false);
-          }
-          AdapterJS.WebRTCPlugin.isPluginInstalled(
-            AdapterJS.WebRTCPlugin.pluginInfo.prefix,
-            AdapterJS.WebRTCPlugin.pluginInfo.plugName,
-            AdapterJS.WebRTCPlugin.pluginInfo.type,
-            function() { // plugin now installed
-              clearInterval(pluginInstallInterval);
-              AdapterJS.WebRTCPlugin.defineWebRTCInterface();
-            },
-            function() {
-              // still no plugin detected, nothing to do
-            });
-        } , 500);
-      });
-    } else { // no download link, just print a generic explanation
-      AdapterJS.renderNotificationBar(AdapterJS.TEXT.PLUGIN.NOT_SUPPORTED);
     }
   };
 
