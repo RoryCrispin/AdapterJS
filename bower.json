@@ -1,7 +1,7 @@
 {
     "name": "adapterjs",
     "description": "Creating a common API for WebRTC in the browser",
-    "version": "0.15.0",
+    "version": "0.16.0",
     "homepage": "https://temasys.github.io/",
     "author": {
         "name": "Temasys Communications Pte. Ltd.",
@@ -9,7 +9,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git@github.com:Temasys/AdapterJS.git"
+        "url": "git@github.com:StarLeafRob/AdapterJS.git"
     },
     "licenses": [{
         "type": "Apache",
