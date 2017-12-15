@@ -1,4 +1,4 @@
-/*! adapterjs - v0.16.0 - 2017-11-15 */
+/*! adapterjs - v0.16.1 - 2017-12-15 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -15,10 +15,10 @@ AdapterJS.options.hidePluginInstallPrompt = true;
 
 // uncomment to force the use of the plugin on Safari
 // AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = true;
+AdapterJS.options.forceSafariPlugin = false;
 
 // AdapterJS version
-AdapterJS.VERSION = '0.16.0';
+AdapterJS.VERSION = '0.16.1';
 
 // This function will be called when the WebRTC API is ready to be used
 // Whether it is the native implementation (Chrome, Firefox, Opera) or
@@ -4416,14 +4416,16 @@ var firefoxShim = {
   },
 
   shimRemoveStream: function(window) {
-    if ('removeStream' in window.RTCPeerConnection.prototype) {
+    if (!window.RTCPeerConnection ||
+        'removeStream' in window.RTCPeerConnection.prototype) {
       return;
     }
     window.RTCPeerConnection.prototype.removeStream = function(stream) {
+      var pc = this;
       utils.deprecated('removeStream', 'removeTrack');
       this.getSenders().forEach(function(sender) {
         if (sender.track && stream.getTracks().indexOf(sender.track) !== -1) {
-          this.removeTrack(sender);
+          pc.removeTrack(sender);
         }
       });
     };
@@ -4723,7 +4725,7 @@ var safariShim = {
             this._localStreams.push(stream);
           }
         }
-        _addTrack.call(this, track, stream);
+        return _addTrack.call(this, track, stream);
       };
     }
     if (!('removeStream' in window.RTCPeerConnection.prototype)) {

@@ -13,7 +13,7 @@ AdapterJS.options.hidePluginInstallPrompt = true;
 
 // uncomment to force the use of the plugin on Safari
 // AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = true;
+AdapterJS.options.forceSafariPlugin = false;
 
 // AdapterJS version
 AdapterJS.VERSION = '@@version';
