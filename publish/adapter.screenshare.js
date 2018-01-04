@@ -1,4 +1,4 @@
-/*! adapterjs - v0.16.1 - 2017-12-15 */
+/*! adapterjs - v0.16.1 - 2018-01-04 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -15,7 +15,7 @@ AdapterJS.options.hidePluginInstallPrompt = true;
 
 // uncomment to force the use of the plugin on Safari
 // AdapterJS.options.forceSafariPlugin = true;
-AdapterJS.options.forceSafariPlugin = false;
+AdapterJS.options.forceSafariPlugin = true;
 
 // AdapterJS version
 AdapterJS.VERSION = '0.16.1';
