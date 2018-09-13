@@ -334,7 +334,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
 
   // Detect Safari
   } else if (/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || safari.pushNotification) || navigator.userAgent.match(/AppleWebKit\/(\d+)\./) || navigator.userAgent.match(/Version\/(\d+).(\d+)/)) {
-    hasMatch = navigator.userAgent.match(/version\/(\d+)/i) || [];
+    hasMatch = navigator.userAgent.match(/version\/(\d+)\.(\d+)/i) || [];
     AppleWebKitBuild = navigator.userAgent.match(/AppleWebKit\/(\d+)/i) || [];
 
     var isMobile      = navigator.userAgent.match(/(iPhone|iPad)/gi);
