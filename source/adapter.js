@@ -341,6 +341,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     var hasNativeImpl = AppleWebKitBuild.length >= 1 && AppleWebKitBuild[1] >= 604;
     webrtcDetectedBrowser   = 'safari';
     webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    webrtcDetectedMinorVersion = parseInt(hasMatch[2] || '0', 10);
     webrtcMinimumVersion    = 7;
     if (isMobile) {
       webrtcDetectedType    = hasNativeImpl ? 'AppleWebKit' : null;
@@ -356,6 +357,7 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
   AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion    = webrtcMinimumVersion;
   AdapterJS.webrtcDetectedType      = window.webrtcDetectedType      = webrtcDetectedType;
   AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport;
+  AdapterJS.webrtcDetectedMinorVersion = window.webrtcDetectedMinorVersion  = webrtcDetectedMinorVersion;
 };
 
 AdapterJS.addEvent = function(elem, evnt, func) {
@@ -522,6 +524,7 @@ reattachMediaStream = null;
 // - 'safari': Safari browser.
 // - 'IE' - Internet Explorer browser.
 webrtcDetectedBrowser = null;
+webrtcDetectedMinorVersion = null;
 
 // Detected browser version.
 webrtcDetectedVersion = null;
