@@ -1,5 +1,5 @@
 // Adapter's interface.
-var AdapterJS = AdapterJS || {};
+var AdapterJS = AdapterJS || window.AdapterJS || {};
 
 AdapterJS.options = AdapterJS.options || {};
 
@@ -72,7 +72,23 @@ AdapterJS.WebRTCPlugin = AdapterJS.WebRTCPlugin || {};
 
 // The object to store plugin information
 /* jshint ignore:start */
-@Tem@include('pluginInfo.js', {})
+AdapterJS.WebRTCPlugin.pluginInfo = {
+  prefix : 'SLF',
+  plugName : 'StarLeafBrowserPlugin',
+  pluginId : 'plugin0',
+  type : 'application/x-starleafwebrtcbrowserplugin',
+  onload : '__TemWebRTCReady0',
+  portalLink : 'support.starleaf.com',
+  downloadLink : null, //set below
+  companyName: 'StarLeaf'
+};
+if(!!navigator.platform.match(/^Mac/i)) {
+  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://downloads.starleaf.com/webrtc/plugin-mac.pkg';
+}
+else if(!!navigator.platform.match(/^Win/i)) {
+  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://downloads.starleaf.com/webrtc/plugin-windows.msi';
+}
+
 /* jshint ignore:end */
 
 AdapterJS.WebRTCPlugin.TAGS = {
@@ -149,6 +165,10 @@ AdapterJS.WebRTCPlugin.WaitForPluginReady = null;
 // This methid will use an interval to wait for the plugin to be ready.
 AdapterJS.WebRTCPlugin.callWhenPluginReady = null;
 
+AdapterJS.documentReady = function () {
+  return (document.readyState === 'interactive' && !!document.body) || document.readyState === 'complete';
+}
+
 // !!!! WARNING: DO NOT OVERRIDE THIS FUNCTION. !!!
 // This function will be called when plugin is ready. It sends necessary
 // details to the plugin.
@@ -159,8 +179,8 @@ AdapterJS.WebRTCPlugin.callWhenPluginReady = null;
 // TemPluginLoaded function might be called on Chrome/Firefox.
 // This function is the only private function that is not encapsulated to
 // allow the plugin method to be called.
-__TemWebRTCReady0 = function () {
-  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+window.__TemWebRTCReady0 = function () {
+  if (AdapterJS.documentReady()) {
     AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.READY;
     AdapterJS.maybeThroughWebRTCReady();
   } else {
@@ -214,6 +234,59 @@ AdapterJS._iceConnectionFiredStates = [];
 // Check if WebRTC Interface is defined.
 AdapterJS.isDefined = null;
 
+// -----------------------------------------------------------
+// Detected webrtc implementation. Types are:
+// - 'moz': Mozilla implementation of webRTC.
+// - 'webkit': WebKit implementation of webRTC.
+// - 'plugin': Using the plugin implementation.
+window.webrtcDetectedType = null;
+
+//Creates MediaStream object.
+window.MediaStream = (typeof MediaStream === 'function') ? MediaStream : null;
+
+//Creates MediaStreamTrack object.
+window.MediaStreamTrack = (typeof MediaStreamTrack === 'function') ? MediaStreamTrack : null;
+
+//The RTCPeerConnection object.
+window.RTCPeerConnection = (typeof RTCPeerConnection === 'function') ?
+  RTCPeerConnection : null;
+
+// Creates RTCSessionDescription object for Plugin Browsers
+window.RTCSessionDescription = (typeof RTCSessionDescription === 'function') ?
+  RTCSessionDescription : null;
+
+// Creates RTCIceCandidate object for Plugin Browsers
+window.RTCIceCandidate = (typeof RTCIceCandidate === 'function') ?
+  RTCIceCandidate : null;
+
+// Get UserMedia (only difference is the prefix).
+// Code from Adam Barth.
+window.getUserMedia = (typeof getUserMedia  === 'function') ?
+  getUserMedia  : null;
+
+// Attach a media stream to an element.
+window.attachMediaStream = null;
+
+// Re-attach a media stream to an element.
+window.reattachMediaStream = null;
+
+// Detected browser agent name. Types are:
+// - 'firefox': Firefox browser.
+// - 'chrome': Chrome browser.
+// - 'opera': Opera browser.
+// - 'safari': Safari browser.
+// - 'IE' - Internet Explorer browser.
+window.webrtcDetectedBrowser = null;
+
+// Detected browser version.
+window.webrtcDetectedVersion = null;
+
+// The minimum browser version still supported by AJS.
+window.webrtcMinimumVersion  = null;
+
+// The type of DC supported by the browser
+window.webrtcDetectedDCSupport = null;
+
 // This function helps to retrieve the webrtc detected browser information.
 // This sets:
 // - webrtcDetectedBrowser: The browser agent name.
@@ -230,11 +303,11 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
   if ((!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0) {
     hasMatch = navigator.userAgent.match(/OPR\/(\d+)/i) || [];
 
-    webrtcDetectedBrowser   = 'opera';
-    webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
-    webrtcMinimumVersion    = 26;
-    webrtcDetectedType      = 'webkit';
-    webrtcDetectedDCSupport = 'SCTP'; // Opera 20+ uses Chrome 33
+    window.webrtcDetectedBrowser   = 'opera';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    window.webrtcMinimumVersion    = 26;
+    window.webrtcDetectedType      = 'webkit';
+    window.webrtcDetectedDCSupport = 'SCTP'; // Opera 20+ uses Chrome 33
 
   // Detect Bowser on iOS
   } else if (navigator.userAgent.match(/Bowser\/[0-9.]*/g)) {
@@ -242,11 +315,11 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
 
     var chromiumVersion = parseInt((navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./i) || [])[2] || '0', 10);
 
-    webrtcDetectedBrowser   = 'bowser';
-    webrtcDetectedVersion   = parseFloat((hasMatch[0] || '0/0').split('/')[1], 10);
-    webrtcMinimumVersion    = 0;
-    webrtcDetectedType      = 'webkit';
-    webrtcDetectedDCSupport = chromiumVersion > 30 ? 'SCTP' : 'RTP';
+    window.webrtcDetectedBrowser   = 'bowser';
+    window.webrtcDetectedVersion   = parseFloat((hasMatch[0] || '0/0').split('/')[1], 10);
+    window.webrtcMinimumVersion    = 0;
+    window.webrtcDetectedType      = 'webkit';
+    window.webrtcDetectedDCSupport = chromiumVersion > 30 ? 'SCTP' : 'RTP';
 
 
   // Detect Opera on iOS (does not support WebRTC yet)
@@ -254,47 +327,47 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     hasMatch = navigator.userAgent.match(/OPiOS\/([0-9]+)\./);
 
     // Browser which do not support webrtc yet
-    webrtcDetectedBrowser   = 'opera';
-    webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
-    webrtcMinimumVersion    = 0;
-    webrtcDetectedType      = null;
-    webrtcDetectedDCSupport = null;
+    window.webrtcDetectedBrowser   = 'opera';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    window.webrtcMinimumVersion    = 0;
+    window.webrtcDetectedType      = null;
+    window.webrtcDetectedDCSupport = null;
 
   // Detect Chrome on iOS (does not support WebRTC yet)
   } else if (navigator.userAgent.indexOf('CriOS') > 0) {
     hasMatch = navigator.userAgent.match(/CriOS\/([0-9]+)\./) || [];
 
-    webrtcDetectedBrowser   = 'chrome';
-    webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
-    webrtcMinimumVersion    = 0;
-    webrtcDetectedType      = null;
-    webrtcDetectedDCSupport = null;
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    window.webrtcMinimumVersion    = 0;
+    window.webrtcDetectedType      = null;
+    window.webrtcDetectedBrowser   = 'chrome';
+    window.webrtcDetectedDCSupport = null;
 
   // Detect Firefox on iOS (does not support WebRTC yet)
   } else if (navigator.userAgent.indexOf('FxiOS') > 0) {
     hasMatch = navigator.userAgent.match(/FxiOS\/([0-9]+)\./) || [];
 
     // Browser which do not support webrtc yet
-    webrtcDetectedBrowser   = 'firefox';
-    webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
-    webrtcMinimumVersion    = 0;
-    webrtcDetectedType      = null;
-    webrtcDetectedDCSupport = null;
+    window.webrtcDetectedBrowser   = 'firefox';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    window.webrtcMinimumVersion    = 0;
+    window.webrtcDetectedType      = null;
+    window.webrtcDetectedDCSupport = null;
 
   // Detect IE (6-11)
   } else if (/*@cc_on!@*/false || !!document.documentMode) {
     hasMatch = /\brv[ :]+(\d+)/g.exec(navigator.userAgent) || [];
 
-    webrtcDetectedBrowser   = 'IE';
-    webrtcDetectedVersion   = parseInt(hasMatch[1], 10);
-    webrtcMinimumVersion    = 9;
-    webrtcDetectedType      = 'plugin';
-    webrtcDetectedDCSupport = 'SCTP';
+    window.webrtcDetectedBrowser   = 'IE';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1], 10);
+    window.webrtcMinimumVersion    = 9;
+    window.webrtcDetectedType      = 'plugin';
+    window.webrtcDetectedDCSupport = 'SCTP';
 
     if (!webrtcDetectedVersion) {
       hasMatch = /\bMSIE[ :]+(\d+)/g.exec(navigator.userAgent) || [];
 
-      webrtcDetectedVersion = parseInt(hasMatch[1] || '0', 10);
+      window.webrtcDetectedVersion = parseInt(hasMatch[1] || '0', 10);
     }
 
   // Detect Edge (20+)
@@ -304,60 +377,63 @@ AdapterJS.parseWebrtcDetectedBrowser = function () {
     // Previous webrtc/adapter uses minimum version as 10547 but checking in the Edge release history,
     // It's close to 13.10547 and ObjectRTC API is fully supported in that version
 
-    webrtcDetectedBrowser   = 'edge';
-    webrtcDetectedVersion   = parseFloat((hasMatch[0] || '0/0').split('/')[1], 10);
-    webrtcMinimumVersion    = 13.10547;
-    webrtcDetectedType      = 'ms';
-    webrtcDetectedDCSupport = null;
+    window.webrtcDetectedBrowser   = 'edge';
+    window.webrtcDetectedVersion   = parseFloat((hasMatch[0] || '0/0').split('/')[1], 10);
+    window.webrtcMinimumVersion    = 13.10547;
+    window.webrtcDetectedType      = 'ms';
+    window.webrtcDetectedDCSupport = null;
 
   // Detect Firefox (1.0+)
   // Placed before Safari check to ensure Firefox on Android is detected
   } else if (typeof InstallTrigger !== 'undefined' || navigator.userAgent.indexOf('irefox') > 0) {
     hasMatch = navigator.userAgent.match(/Firefox\/([0-9]+)\./) || [];
 
-    webrtcDetectedBrowser   = 'firefox';
-    webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
-    webrtcMinimumVersion    = 33;
-    webrtcDetectedType      = 'moz';
-    webrtcDetectedDCSupport = 'SCTP';
+    window.webrtcDetectedBrowser   = 'firefox';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    window.webrtcMinimumVersion    = 33;
+    window.webrtcDetectedType      = 'moz';
+    window.webrtcDetectedDCSupport = 'SCTP';
 
   // Detect Chrome (1+ and mobile)
   // Placed before Safari check to ensure Chrome on Android is detected
   } else if ((!!window.chrome && !!window.chrome.webstore) || navigator.userAgent.indexOf('Chrom') > 0) {
     hasMatch = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./i) || [];
 
-    webrtcDetectedBrowser   = 'chrome';
-    webrtcDetectedVersion   = parseInt(hasMatch[2] || '0', 10);
-    webrtcMinimumVersion    = 38;
-    webrtcDetectedType      = 'webkit';
-    webrtcDetectedDCSupport = webrtcDetectedVersion > 30 ? 'SCTP' : 'RTP'; // Chrome 31+ supports SCTP without flags
+    window.webrtcDetectedBrowser   = 'chrome';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[2] || '0', 10);
+    window.webrtcMinimumVersion    = 38;
+    window.webrtcDetectedType      = 'webkit';
+    window.webrtcDetectedDCSupport = window.webrtcDetectedVersion > 30 ? 'SCTP' : 'RTP'; // Chrome 31+ supports SCTP without flags
 
   // Detect Safari
   } else if (/constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || safari.pushNotification) || navigator.userAgent.match(/AppleWebKit\/(\d+)\./) || navigator.userAgent.match(/Version\/(\d+).(\d+)/)) {
     hasMatch = navigator.userAgent.match(/version\/(\d+)\.(\d+)/i) || [];
-    AppleWebKitBuild = navigator.userAgent.match(/AppleWebKit\/(\d+)/i) || [];
+    var AppleWebKitBuild = navigator.userAgent.match(/AppleWebKit\/(\d+)/i) || [];
 
     var isMobile      = navigator.userAgent.match(/(iPhone|iPad)/gi);
     var hasNativeImpl = AppleWebKitBuild.length >= 1 && AppleWebKitBuild[1] >= 604;
-    webrtcDetectedBrowser   = 'safari';
-    webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
-    webrtcDetectedMinorVersion = parseInt(hasMatch[2] || '0', 10);
-    webrtcMinimumVersion    = 7;
+    window.webrtcDetectedBrowser   = 'safari';
+    window.webrtcDetectedVersion   = parseInt(hasMatch[1] || '0', 10);
+    window.webrtcDetectedMinorVersion = parseInt(hasMatch[2] || '0', 10);
+    window.webrtcMinimumVersion    = 7;
     if (isMobile) {
-      webrtcDetectedType    = hasNativeImpl ? 'AppleWebKit' : null;
+      window.webrtcDetectedType    = hasNativeImpl ? 'AppleWebKit' : null;
     } else { // desktop
-      webrtcDetectedType    = hasNativeImpl && !AdapterJS.options.forceSafariPlugin ? 'AppleWebKit' : 'plugin';
+      var majorVersion = window.webrtcDetectedVersion;
+      var minorVersion = parseInt(hasMatch[2] || '0', 10);
+      var nativeImplIsOverridable = majorVersion == 11 && minorVersion < 2;
+      window.webrtcDetectedType    = hasNativeImpl && !(AdapterJS.options.forceSafariPlugin && nativeImplIsOverridable) ? 'AppleWebKit' : 'plugin';
     }
-    webrtcDetectedDCSupport = 'SCTP';
+    window.webrtcDetectedDCSupport = 'SCTP';
   }
 
   // Scope it to AdapterJS and window for better consistency
-  AdapterJS.webrtcDetectedBrowser   = window.webrtcDetectedBrowser   = webrtcDetectedBrowser;
-  AdapterJS.webrtcDetectedVersion   = window.webrtcDetectedVersion   = webrtcDetectedVersion;
-  AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion    = webrtcMinimumVersion;
-  AdapterJS.webrtcDetectedType      = window.webrtcDetectedType      = webrtcDetectedType;
-  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport = webrtcDetectedDCSupport;
-  AdapterJS.webrtcDetectedMinorVersion = window.webrtcDetectedMinorVersion  = webrtcDetectedMinorVersion;
+  AdapterJS.webrtcDetectedBrowser   = window.webrtcDetectedBrowser;
+  AdapterJS.webrtcDetectedVersion   = window.webrtcDetectedVersion;
+  AdapterJS.webrtcMinimumVersion    = window.webrtcMinimumVersion;
+  AdapterJS.webrtcDetectedType      = window.webrtcDetectedType;
+  AdapterJS.webrtcDetectedDCSupport = window.webrtcDetectedDCSupport;
+  AdapterJS.webrtcDetectedMinorVersion = window.webrtcDetectedMinorVersion;
 };
 
 AdapterJS.addEvent = function(elem, evnt, func) {
@@ -727,7 +803,7 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
 
   // Need to override attachMediaStream and reattachMediaStream
   // to support the plugin's logic
-  attachMediaStream_base = attachMediaStream;
+  var attachMediaStream_base = attachMediaStream;
 
   if (AdapterJS.webrtcDetectedBrowser === 'opera') {
     attachMediaStream_base = function (element, stream) {
@@ -751,7 +827,7 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
     }
     return element;
   };
-  reattachMediaStream_base = reattachMediaStream;
+  var reattachMediaStream_base = reattachMediaStream;
   reattachMediaStream = function (to, from) {
     reattachMediaStream_base(to, from);
     return to;
@@ -857,7 +933,7 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
 
   AdapterJS.WebRTCPlugin.injectPlugin = function () {
     // only inject once the page is ready
-    if (document.readyState !== 'interactive' && document.readyState !== 'complete') {
+    if (!AdapterJS.documentReady()) {
       return;
     }
 
@@ -867,6 +943,27 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
     }
 
     AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.INJECTING;
+
+    var existing = document.getElementById(AdapterJS.WebRTCPlugin.pluginInfo.pluginId);
+    if (!!existing) {
+      // There is already a plugin injected in the DOM.
+      // Probably from multiple calls to node's requirecopy(AJS);
+      // Take the existing one, and make it this AJS's plugin
+      AdapterJS.WebRTCPlugin.plugin = existing;
+      AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.INJECTED;
+      if (AdapterJS.WebRTCPlugin.plugin.valid) {
+        window[AdapterJS.WebRTCPlugin.pluginInfo.onload](); // call onload function to unlock AJS
+      } else {
+        // wait for plugin.valid with an interval
+        var pluginValidInterval = setInterval(function () {
+          if (AdapterJS.WebRTCPlugin.plugin.valid) {
+            clearInterval(pluginValidInterval);
+            window[AdapterJS.WebRTCPlugin.pluginInfo.onload](); // call onload function to unlock AJS
+          }
+        }, 100);
+      }
+      return;
+    }
 
     if (AdapterJS.webrtcDetectedBrowser === 'IE' && AdapterJS.webrtcDetectedVersion <= 10) {
       var frag = document.createDocumentFragment();
@@ -1177,8 +1274,10 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
           }
         });
       };
-      navigator.mediaDevices = {getUserMedia: requestUserMedia,
-                                enumerateDevices: function() {
+      if (typeof(navigator.mediaDevices) === 'undefined')
+        navigator.mediaDevices = {};
+      navigator.mediaDevices.getUserMedia = requestUserMedia;
+      navigator.mediaDevices.enumerateDevices = function() {
         return new Promise(function(resolve) {
           var kinds = {audio: 'audioinput', video: 'videoinput'};
           return MediaStreamTrack.getSources(function(devices) {
@@ -1191,7 +1290,7 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
             }));
           });
         });
-      }};
+      };
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1381,4 +1480,541 @@ if (['webkit', 'moz', 'ms', 'AppleWebKit'].indexOf(AdapterJS.webrtcDetectedType)
 // Browserify compatibility
 if(typeof exports !== 'undefined') {
   module.exports = AdapterJS;
+}
+
+AdapterJS._mediaSourcePolyfillIsDefined = false;
+AdapterJS._defineMediaSourcePolyfill = function () {
+  // Sanity checks to prevent re-defining the polyfills again in any case.
+  if (AdapterJS._mediaSourcePolyfillIsDefined) {
+    return;
+  }
+
+  AdapterJS._mediaSourcePolyfillIsDefined = true;
+  var baseGetUserMedia = null;
+
+  var clone = function(obj) {
+    if (null === obj || 'object' !== typeof obj) {
+      return obj;
+    }
+    var copy = obj.constructor();
+    for (var attr in obj) {
+      if (obj.hasOwnProperty(attr)) {
+        copy[attr] = obj[attr];
+      }
+    }
+    return copy;
+  };
+
+  var checkIfConstraintsIsValid = function (constraints, successCb, failureCb) {
+    // Append checks for overrides as these are mandatory
+    // Browsers (not Firefox since they went Promise based) does these checks and they can be quite useful
+    if (!(constraints && typeof constraints === 'object')) {
+      throw new Error('GetUserMedia: (constraints, .., ..) argument required');
+    } else if (typeof successCb !== 'function') {
+      throw new Error('GetUserMedia: (.., successCb, ..) argument required');
+    } else if (typeof failureCb !== 'function') {
+      throw new Error('GetUserMedia: (.., .., failureCb) argument required');
+    }
+  };
+
+  if (AdapterJS.webrtcDetectedType === 'moz') {
+    baseGetUserMedia = window.navigator.getUserMedia;
+
+    navigator.getUserMedia = function (constraints, successCb, failureCb) {
+      checkIfConstraintsIsValid(constraints, successCb, failureCb);
+
+      // Prevent accessing property from Boolean errors
+      if (constraints.video && typeof constraints.video === 'object' &&
+        constraints.video.hasOwnProperty('mediaSource')) {
+        var updatedConstraints = clone(constraints);
+        // See: http://fluffy.github.io/w3c-screen-share/#screen-based-video-constraints
+        // See also: https://bugzilla.mozilla.org/show_bug.cgi?id=1037405
+        var mediaSourcesList = ['screen', 'window', 'application', 'browser', 'camera'];
+        var useExtensionErrors = ['NotAllowedError', 'PermissionDeniedError', 'SecurityError'];
+
+        // Obtain first item in array if array is provided
+        if (Array.isArray(updatedConstraints.video.mediaSource)) {
+          var i = 0;
+          while (i < updatedConstraints.video.mediaSource.length) {
+            if (mediaSourcesList.indexOf(updatedConstraints.video.mediaSource[i]) > -1) {
+              updatedConstraints.video.mediaSource = updatedConstraints.video.mediaSource[i];
+              break;
+            }
+            i++;
+          }
+          updatedConstraints.video.mediaSource = typeof updatedConstraints.video.mediaSource === 'string' ?
+            updatedConstraints.video.mediaSource : null;
+        }
+
+        // Invalid mediaSource for firefox, only specified sources are supported
+        if (mediaSourcesList.indexOf(updatedConstraints.video.mediaSource) === -1) {
+          failureCb(new Error('GetUserMedia: Only "screen" and "window" are supported as mediaSource constraints'));
+          return;
+        }
+
+        // Apparently requires document.readyState to be completed before the getUserMedia() could be invoked
+        // NOTE: Doesn't make sense but let's keep it that way for now
+        var checkIfReady = setInterval(function () {
+          if (document.readyState !== 'complete') {
+            return;
+          }
+
+          clearInterval(checkIfReady);
+          updatedConstraints.video.mozMediaSource = updatedConstraints.video.mediaSource;
+
+          baseGetUserMedia(updatedConstraints, successCb, function (error) {
+            // Reference: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+            // Firefox 51 and below throws the following errors when screensharing is disabled, in which we can
+            //   trigger installation for legacy extension (which no longer can be used) to enable screensharing
+            if (useExtensionErrors.indexOf(error.name) > -1 &&
+            // Note that "https:" should be required for screensharing
+              AdapterJS.webrtcDetectedVersion < 52 && window.parent.location.protocol === 'https:') {
+              // Render the notification bar to install legacy Firefox (for 51 and below) extension
+              AdapterJS.renderNotificationBar(AdapterJS.TEXT.EXTENSION.REQUIRE_INSTALLATION_FF,
+                AdapterJS.TEXT.EXTENSION.BUTTON_FF, function (e) {
+                // Render the refresh bar once the user clicks to install extension from addons store
+                window.open(AdapterJS.extensionInfo.firefox.extensionLink, '_blank');
+                if (e.target && e.target.parentElement && e.target.nextElementSibling &&
+                  e.target.nextElementSibling.click) {
+                  e.target.nextElementSibling.click();
+                }
+                AdapterJS.renderNotificationBar(AdapterJS.TEXT.EXTENSION ?
+                  AdapterJS.TEXT.EXTENSION.REQUIRE_REFRESH : AdapterJS.TEXT.REFRESH.REQUIRE_REFRESH,
+                  AdapterJS.TEXT.REFRESH.BUTTON, function () {
+                  window.open('javascript:location.reload()', '_top');
+                });
+              });
+            } else {
+              failureCb(error);
+            }
+          });
+        }, 1);
+      // Regular getUserMedia() call
+      } else {
+        baseGetUserMedia(constraints, successCb, failureCb);
+      }
+    };
+
+    AdapterJS.getUserMedia = window.getUserMedia = navigator.getUserMedia;
+    // Comment out to prevent recursive errors as webrtc/adapter polyfills navigator.getUserMedia and calls
+    //   navigator.mediaDevices.getUserMedia internally
+    /*navigator.mediaDevices.getUserMedia = function(constraints) {
+      return new Promise(function(resolve, reject) {
+        window.getUserMedia(constraints, resolve, reject);
+      });
+    };*/
+
+  } else if (AdapterJS.webrtcDetectedType === 'webkit') {
+    baseGetUserMedia = window.navigator.getUserMedia;
+    var iframe = document.createElement('iframe');
+
+    navigator.getUserMedia = function (constraints, successCb, failureCb) {
+      checkIfConstraintsIsValid(constraints, successCb, failureCb);
+
+      // Prevent accessing property from Boolean errors
+      if (constraints.video && typeof constraints.video === 'object' && constraints.video.hasOwnProperty('mediaSource')) {
+        var updatedConstraints = clone(constraints);
+        // See: https://developer.chrome.com/extensions/desktopCapture#type-DesktopCaptureSourceType
+        var mediaSourcesList = ['window', 'screen', 'tab', 'audio'];
+
+        // Check if it is Android phone for experimental 59 screensharing
+        // See: https://bugs.chromium.org/p/chromium/issues/detail?id=487935
+        if (navigator.userAgent.toLowerCase().indexOf('android') > -1) {
+          if (Array.isArray(updatedConstraints.video.mediaSource) ?
+            updatedConstraints.video.mediaSource.indexOf('screen') > -1 :
+            updatedConstraints.video.mediaSource === 'screen') {
+            updatedConstraints.video.mandatory = updatedConstraints.video.mandatory || {};
+            updatedConstraints.video.mandatory.chromeMediaSource = 'screen';
+            updatedConstraints.video.mandatory.maxHeight = window.screen.height;
+            updatedConstraints.video.mandatory.maxWidth = window.screen.width;
+            delete updatedConstraints.video.mediaSource;
+            baseGetUserMedia(updatedConstraints, successCb, failureCb);
+          } else {
+            failureCb(new Error('GetUserMedia: Only "screen" are supported as mediaSource constraints for Android'));
+          }
+          return;
+        }
+
+        // Backwards compability for Opera browsers not working when not configured
+        if (!(AdapterJS.webrtcDetectedBrowser === 'opera' ? !!AdapterJS.extensionInfo.opera.extensionId :
+          AdapterJS.webrtcDetectedBrowser === 'chrome')) {
+          failureCb(new Error('Current browser does not support screensharing'));
+          return;
+        }
+
+        // Check against non valid sources
+        if (typeof updatedConstraints.video.mediaSource === 'string' &&
+          mediaSourcesList.indexOf(updatedConstraints.video.mediaSource) > -1 &&
+          updatedConstraints.video.mediaSource !== 'audio') {
+          updatedConstraints.video.mediaSource = [updatedConstraints.video.mediaSource];
+        // Loop array and remove invalid sources
+        } else if (Array.isArray(updatedConstraints.video.mediaSource)) {
+          var i = 0;
+          var outputMediaSource = [];
+          while (i < mediaSourcesList.length) {
+            var j = 0;
+            while (j < updatedConstraints.video.mediaSource.length) {
+              if (mediaSourcesList[i] === updatedConstraints.video.mediaSource[j]) {
+                outputMediaSource.push(updatedConstraints.video.mediaSource[j]);
+              }
+              j++;
+            }
+            i++;
+          }
+          updatedConstraints.video.mediaSource = outputMediaSource;
+        } else {
+          updatedConstraints.video.mediaSource = [];
+        }
+
+        // Check against returning "audio" or ["audio"] without "tab"
+        if (updatedConstraints.video.mediaSource.indexOf('audio') > -1 &&
+          updatedConstraints.video.mediaSource.indexOf('tab') === -1) {
+          failureCb(new Error('GetUserMedia: "audio" mediaSource must be provided with ["audio", "tab"]'));
+          return;
+        // No valid sources specified
+        } else if (updatedConstraints.video.mediaSource.length === 0) {
+          failureCb(new Error('GetUserMedia: Only "screen", "window", "tab" are supported as mediaSource constraints'));
+          return;
+        // Warn users that no tab audio will be used because constraints.audio must be enabled
+        } else if (updatedConstraints.video.mediaSource.indexOf('tab') > -1 &&
+          updatedConstraints.video.mediaSource.indexOf('audio') > -1 && !updatedConstraints.audio) {
+          console.warn('Audio must be requested if "tab" and "audio" mediaSource constraints is requested');
+        }
+
+        var fetchStream = function (response) {
+          if (response.success) {
+            updatedConstraints.video.mandatory = updatedConstraints.video.mandatory || {};
+            updatedConstraints.video.mandatory.chromeMediaSource = 'desktop';
+            updatedConstraints.video.mandatory.maxWidth = window.screen.width > 1920 ? window.screen.width : 1920;
+            updatedConstraints.video.mandatory.maxHeight = window.screen.height > 1080 ? window.screen.height : 1080;
+            updatedConstraints.video.mandatory.chromeMediaSourceId = response.sourceId;
+
+            if (Array.isArray(updatedConstraints.video.mediaSource) &&
+              updatedConstraints.video.mediaSource.indexOf('tab') > -1 &&
+              updatedConstraints.video.mediaSource.indexOf('audio') > -1 && updatedConstraints.audio) {
+              updatedConstraints.audio = typeof updatedConstraints.audio === 'object' ? updatedConstraints.audio : {};
+              updatedConstraints.audio.mandatory = updatedConstraints.audio.mandatory || {};
+              updatedConstraints.audio.mandatory.chromeMediaSource = 'desktop';
+              updatedConstraints.audio.mandatory.chromeMediaSourceId = response.sourceId;
+            }
+
+            delete updatedConstraints.video.mediaSource;
+            baseGetUserMedia(updatedConstraints, successCb, failureCb);
+          } else {
+            // Extension not installed, trigger to install
+            if (response.extensionLink) {
+              // Render the notification bar to install extension
+              AdapterJS.renderNotificationBar(AdapterJS.TEXT.EXTENSION.REQUIRE_INSTALLATION_CHROME,
+                AdapterJS.TEXT.EXTENSION.BUTTON_CHROME, function (e) {
+                // Render the refresh bar once the user clicks to install extension from addons store
+                window.open(response.extensionLink, '_blank');
+                if (e.target && e.target.parentElement && e.target.nextElementSibling &&
+                  e.target.nextElementSibling.click) {
+                  e.target.nextElementSibling.click();
+                }
+                AdapterJS.renderNotificationBar(AdapterJS.TEXT.EXTENSION ?
+                  AdapterJS.TEXT.EXTENSION.REQUIRE_REFRESH : AdapterJS.TEXT.REFRESH.REQUIRE_REFRESH,
+                  AdapterJS.TEXT.REFRESH.BUTTON, function () {
+                  window.open('javascript:location.reload()', '_top');
+                });
+              });
+            }
+            failureCb(response.error);
+          }
+        };
+
+        // Communicate with detectRTC (iframe) method to retrieve source ID
+        // Opera browser should not use iframe method
+        if (AdapterJS.extensionInfo.chrome.iframeLink && AdapterJS.webrtcDetectedBrowser !== 'opera') {
+          iframe.getSourceId(updatedConstraints.video.mediaSource, fetchStream);
+        // Communicate with extension directly (needs updated extension code)
+        } else {
+          var extensionId = AdapterJS.extensionInfo[AdapterJS.webrtcDetectedBrowser === 'opera' ? 'opera' : 'chrome'].extensionId;
+          var extensionLink = AdapterJS.extensionInfo[AdapterJS.webrtcDetectedBrowser === 'opera' ? 'opera' : 'chrome'].extensionLink;
+          var icon = document.createElement('img');
+          icon.src = 'chrome-extension://' + extensionId + '/icon.png';
+
+          icon.onload = function() {
+            // Check if extension is enabled, it should return data
+            chrome.runtime.sendMessage(extensionId, {
+              type: 'get-version'
+            }, function (versionRes) {
+              // Extension not enabled
+              if (!(versionRes && typeof versionRes === 'object' && versionRes.type === 'send-version')) {
+                fetchStream({
+                  success: false,
+                  error: new Error('Extension is disabled')
+                });
+                return;
+              }
+              // Retrieve source ID
+              chrome.runtime.sendMessage(extensionId, {
+                type: 'get-source',
+                sources: updatedConstraints.video.mediaSource
+              }, function (sourceRes) {
+                // Permission denied
+                if (!(sourceRes && typeof sourceRes === 'object')) {
+                  fetchStream({
+                    success: false,
+                    error: new Error('Retrieval failed')
+                  });
+                // Could be cancelled
+                } else if (sourceRes.type === 'send-source-error') {
+                  fetchStream({
+                    success: false,
+                    error: new Error('Permission denied for screen retrieval')
+                  });
+                } else {
+                  fetchStream({
+                    success: true,
+                    sourceId: sourceRes.sourceId
+                  });
+                }
+              });
+            });
+          };
+
+          // Extension icon didn't load so extension was not installed
+          icon.onerror = function () {
+            fetchStream({
+              success: false,
+              error: new Error('Extension not installed'),
+              extensionLink: extensionLink
+            });
+          };
+        }
+      } else {
+        baseGetUserMedia(constraints, successCb, failureCb);
+      }
+    };
+
+    AdapterJS.getUserMedia = window.getUserMedia = navigator.getUserMedia;
+    navigator.mediaDevices.getUserMedia = function(constraints) {
+      return new Promise(function(resolve, reject) {
+        try {
+          window.getUserMedia(constraints, resolve, reject);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    };
+
+    // Start loading the iframe
+    if (AdapterJS.webrtcDetectedBrowser === 'chrome') {
+      var states = {
+        loaded: false,
+        error: false
+      };
+
+      // Remove previous iframe if it exists
+      if (iframe) {
+        // Prevent errors thrown when iframe does not exists yet
+        try {
+          (document.body || document.documentElement).removeChild(iframe);
+        } catch (e) {}
+      }
+
+      // Do not need to load iframe as it is not requested
+      if (!AdapterJS.extensionInfo.chrome.iframeLink) {
+        return;
+      }
+
+      iframe.onload = function() {
+        states.loaded = true;
+      };
+
+      iframe.onerror = function () {
+        states.error = true;
+      };
+
+      iframe.src = AdapterJS.extensionInfo.chrome.iframeLink;
+      iframe.style.display = 'none';
+
+      // Listen to iframe messages
+      var getSourceIdFromIFrame = function (sources, cb) {
+        window.addEventListener('message', function iframeListener (evt) {
+          if (!(evt.data && typeof evt.data === 'object')) {
+            return;
+          // Extension not installed
+          } else if (evt.data.chromeExtensionStatus === 'not-installed') {
+            window.removeEventListener('message', iframeListener);
+            cb({
+              success: false,
+              error: new Error('Extension is not installed'),
+              // Should return the above configured chrome.extensionLink but fallback for users using custom detectRTC.html
+              extensionLink: evt.data.data || AdapterJS.extensionInfo.chrome.extensionLink
+            });
+          // Extension not enabled
+          } else if (evt.data.chromeExtensionStatus === 'installed-disabled') {
+            window.removeEventListener('message', iframeListener);
+            cb({
+              success: false,
+              error: new Error('Extension is disabled')
+            });
+          // Permission denied for retrieval
+          } else if (evt.data.chromeMediaSourceId === 'PermissionDeniedError') {
+            window.removeEventListener('message', iframeListener);
+            cb({
+              success: false,
+              error: new Error('Permission denied for screen retrieval')
+            });
+          // Source ID retrieved
+          } else if (evt.data.chromeMediaSourceId && typeof evt.data.chromeMediaSourceId === 'string') {
+            window.removeEventListener('message', iframeListener);
+            cb({
+              success: true,
+              sourceId: evt.data.chromeMediaSourceId
+            });
+          }
+        });
+
+        // Check if extension has loaded, and then fetch for the sourceId
+        iframe.contentWindow.postMessage({
+          captureSourceId: true,
+          sources: sources,
+          legacy: true,
+          extensionId: AdapterJS.extensionInfo.chrome.extensionId,
+          extensionLink: AdapterJS.extensionInfo.chrome.extensionLink
+        }, '*');
+      };
+
+      // The function to communicate with iframe
+      iframe.getSourceId = function (sources, cb) {
+        // If iframe failed to load, ignore
+        if (states.error) {
+          cb({
+            success: false,
+            error: new Error('iframe is not loaded')
+          });
+          return;
+        }
+
+        // Set interval to wait for iframe to load till 5 seconds before counting as dead
+        if (!states.loaded) {
+          var endBlocks = 0;
+          var intervalChecker = setInterval(function () {
+            if (!states.loaded) {
+              // Loading of iframe has been dead.
+              if (endBlocks === 50) {
+                clearInterval(intervalChecker);
+                cb({
+                  success: false,
+                  error: new Error('iframe failed to load')
+                });
+              } else {
+                endBlocks++;
+              }
+            } else {
+              clearInterval(intervalChecker);
+              getSourceIdFromIFrame(sources, cb);
+            }
+          }, 100);
+        } else {
+          getSourceIdFromIFrame(sources, cb);
+        }
+      };
+
+      // Re-append to reload
+      (document.body || document.documentElement).appendChild(iframe);
+    }
+
+  } else if (AdapterJS.webrtcDetectedBrowser === 'edge') {
+    // Note: Not overriding getUserMedia() to reject "mediaSource" as to prevent "Invalid calling object" errors.
+    // Nothing here because edge does not support screensharing
+    console.warn('Edge does not support screensharing feature in getUserMedia');
+
+  } else if (AdapterJS.webrtcDetectedType === 'AppleWebKit') {
+    // don't do anything. Screensharing is not supported
+    console.warn('Safari does not support screensharing feature in getUserMedia');
+  } else if (AdapterJS.webrtcDetectedType === 'plugin') {
+
+
+    AdapterJS.WebRTCPlugin.parseVersion = function(version) {
+      var components = version.split(".");
+      var parsed = {
+        major:    parseInt(components[0]),
+        minor:    parseInt(components[1]),
+        revision: parseInt(components[2]),
+      }
+      return parsed;
+    };
+
+    AdapterJS.WebRTCPlugin.isVersionGreater = function(v1, v2) {
+      // Parse v1 and v2
+      var parsedV1 = AdapterJS.WebRTCPlugin.parseVersion(v1);
+      var parsedV2 = AdapterJS.WebRTCPlugin.parseVersion(v2);
+
+      // Compare major, minor, revision
+      return (parsedV1.major > parsedV2.major)
+          || (parsedV1.major == parsedV2.major && parsedV1.minor > parsedV2.minor)
+          || (parsedV1.major == parsedV2.major && parsedV1.minor == parsedV2.minor && parsedV1.revision > parsedV2.revision);
+    }
+
+
+    baseGetUserMedia = window.navigator.getUserMedia;
+
+    navigator.getUserMedia = function (constraints, successCb, failureCb) {
+      checkIfConstraintsIsValid(constraints, successCb, failureCb);
+
+      if (constraints.video && typeof constraints.video === 'object' && constraints.video.hasOwnProperty('mediaSource')) {
+        var updatedConstraints = clone(constraints);
+
+        // Wait for plugin to be ready
+        AdapterJS.WebRTCPlugin.callWhenPluginReady(function() {
+          // Check if screensharing feature is available
+          if (!!AdapterJS.WebRTCPlugin.plugin.HasScreensharingFeature && !!AdapterJS.WebRTCPlugin.plugin.isScreensharingAvailable) {
+            // Do strict checks for the source ID - "screen", "window" or ["screen", "window"]
+            // Note that the screen/window can be JS selected using constraints.video.optional[n].screenId
+
+            if (AdapterJS.WebRTCPlugin.plugin.screensharingKeys) {
+              // Param: ["screen", "window"]
+              // Legacy: Also s upport for "Screensharing" and "screensharing"
+              if ((Array.isArray(updatedConstraints.video.mediaSource) &&
+                    updatedConstraints.video.mediaSource.indexOf('screen') > -1 &&
+                    updatedConstraints.video.mediaSource.indexOf('window') > -1)
+                  || updatedConstraints.video.mediaSource === AdapterJS.WebRTCPlugin.plugin.screensharingKey
+                  || updatedConstraints.video.mediaSource === AdapterJS.WebRTCPlugin.plugin.screensharingKeys.screenOrWindow
+                 ) {
+                updatedConstraints.video.mediaSource = AdapterJS.WebRTCPlugin.plugin.screensharingKeys.screenOrWindow;
+              // Param: ["screen"] or "screen"
+              } else if ((Array.isArray(updatedConstraints.video.mediaSource) &&
+                updatedConstraints.video.mediaSource.indexOf('screen') > -1) || updatedConstraints.video.mediaSource === 'screen') {
+                updatedConstraints.video.mediaSource = AdapterJS.WebRTCPlugin.plugin.screensharingKeys.screen;
+              // Param: ["window"] or "window"
+              } else if ((Array.isArray(updatedConstraints.video.mediaSource) &&
+                updatedConstraints.video.mediaSource.indexOf('window') > -1) || updatedConstraints.video.mediaSource === 'window') {
+                updatedConstraints.video.mediaSource = AdapterJS.WebRTCPlugin.plugin.screensharingKeys.window;
+              } else {
+                failureCb(new Error('GetUserMedia: Only "screen", "window", ["screen", "window"] are supported as mediaSource constraints'));
+                return;
+              }
+            }
+
+            // Support for legacy plugins : set the sourceId to the mediaSource value
+            if (!AdapterJS.WebRTCPlugin.isVersionGreater(AdapterJS.WebRTCPlugin.plugin.VERSION, '0.8.874')) {
+              updatedConstraints.video.optional = updatedConstraints.video.optional || [];
+              updatedConstraints.video.optional.push({ sourceId: updatedConstraints.video.mediaSource });
+            }
+
+            baseGetUserMedia(updatedConstraints, successCb, failureCb);
+
+          } else {
+            failureCb(new Error('Your version of the WebRTC plugin does not support screensharing'));
+            return;
+          }
+        });
+      } else {
+        baseGetUserMedia(constraints, successCb, failureCb);
+      }
+    };
+
+    AdapterJS.getUserMedia = getUserMedia = window.getUserMedia = navigator.getUserMedia;
+    if (navigator.mediaDevices && typeof Promise !== 'undefined') {
+      navigator.mediaDevices.getUserMedia = requestUserMedia;
+    }
+  }
+};
+
+if (typeof window.require !== 'function') {
+  AdapterJS._defineMediaSourcePolyfill();
 }
