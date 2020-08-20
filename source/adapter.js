@@ -72,23 +72,7 @@ AdapterJS.WebRTCPlugin = AdapterJS.WebRTCPlugin || {};
 
 // The object to store plugin information
 /* jshint ignore:start */
-AdapterJS.WebRTCPlugin.pluginInfo = {
-  prefix : 'SLF',
-  plugName : 'StarLeafBrowserPlugin',
-  pluginId : 'plugin0',
-  type : 'application/x-starleafwebrtcbrowserplugin',
-  onload : '__TemWebRTCReady0',
-  portalLink : 'support.starleaf.com',
-  downloadLink : null, //set below
-  companyName: 'StarLeaf'
-};
-if(!!navigator.platform.match(/^Mac/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://downloads.starleaf.com/webrtc/plugin-mac.pkg';
-}
-else if(!!navigator.platform.match(/^Win/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://downloads.starleaf.com/webrtc/plugin-windows.msi';
-}
-
+@Tem@include('pluginInfo.js', {})
 /* jshint ignore:end */
 
 AdapterJS.WebRTCPlugin.TAGS = {
